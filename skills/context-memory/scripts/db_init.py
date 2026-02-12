@@ -213,12 +213,15 @@ def verify_schema() -> dict:
     return result
 
 
+VALID_TABLES = {'sessions', 'messages', 'summaries', 'topics', 'code_snippets'}
+
+
 def get_stats() -> dict:
     """Get database statistics."""
     with get_connection(readonly=True) as conn:
         stats = {}
 
-        for table in ['sessions', 'messages', 'summaries', 'topics', 'code_snippets']:
+        for table in VALID_TABLES:
             cursor = conn.execute(f"SELECT COUNT(*) FROM {table}")
             stats[table] = cursor.fetchone()[0]
 

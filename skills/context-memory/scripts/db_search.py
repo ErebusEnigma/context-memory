@@ -329,11 +329,10 @@ def format_results_markdown(results: dict, detailed: bool = False) -> str:
         if project:
             project = project.replace('\\', '/').split('/')[-1]
 
-        # Relevance score (BM25 is negative, lower is better)
-        relevance = session.get('relevance', 0)
-        relevance_display = round(abs(relevance), 1) if relevance else 'N/A'
+        # Rank-based display (BM25 scores are already sorted)
+        relevance_display = f"Match #{i}"
 
-        lines.append(f"## {i}. {created} | {project} (Relevance: {relevance_display})")
+        lines.append(f"## {i}. {created} | {project} ({relevance_display})")
 
         # Brief summary
         brief = session.get('brief', 'No summary available')
@@ -415,7 +414,8 @@ def format_results_markdown(results: dict, detailed: bool = False) -> str:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Search context-memory")
     parser.add_argument('query', nargs='?', help="Search query")
-    parser.add_argument('--project', help="Limit to project path")
+    parser.add_argument('--project', nargs='?', const=os.getcwd(), default=None,
+                        help="Limit to current project (or specify path)")
     parser.add_argument('--detailed', action='store_true', help="Include full content")
     parser.add_argument('--limit', type=int, default=10, help="Max results")
     parser.add_argument('--format', choices=['json', 'markdown'], default='markdown',
