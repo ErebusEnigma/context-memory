@@ -1,0 +1,25 @@
+[project]
+name = "context-memory"
+version = "1.0.3"
+description = "Persistent, searchable context storage across Claude Code sessions using SQLite + FTS5"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.8"
+authors = [
+    { name = "ErebusEnigma" },
+]
+keywords = ["memory", "context", "sqlite", "fts5", "claude-code", "sessions"]
+
+[project.urls]
+Homepage = "https://github.com/ErebusEnigma/context-memory"
+Repository = "https://github.com/ErebusEnigma/context-memory"
+Issues = "https://github.com/ErebusEnigma/context-memory/issues"
+Changelog = "https://github.com/ErebusEnigma/context-memory/blob/main/CHANGELOG.md"
+
+[tool.ruff]
+line-length = 120
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]

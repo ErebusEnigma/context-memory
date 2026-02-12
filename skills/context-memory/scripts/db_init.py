@@ -7,7 +7,7 @@ Creates tables, FTS5 virtual tables, indexes, and triggers.
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from db_utils import get_connection, ensure_db_dir, db_exists, DB_PATH
+from db_utils import get_connection, ensure_db_dir, db_exists, DB_PATH, VALID_TABLES
 
 SCHEMA_SQL = """
 -- Core Tables
@@ -243,9 +243,6 @@ def verify_schema() -> dict:
     }
 
     return result
-
-
-VALID_TABLES = {'sessions', 'messages', 'summaries', 'topics', 'code_snippets'}
 
 
 def get_stats() -> dict:

@@ -24,6 +24,15 @@ build/
 Thumbs.db
 Desktop.ini
 
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Type checking & Linting
+.mypy_cache/
+.ruff_cache/
+
 # Environment
 .env
 .venv/
