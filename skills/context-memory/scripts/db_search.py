@@ -379,7 +379,7 @@ def format_results_markdown(results: dict, detailed: bool = False) -> str:
             if isinstance(techs, str):
                 try:
                     techs = json.loads(techs)
-                except:
+                except (json.JSONDecodeError, ValueError):
                     techs = [techs]
             if techs:
                 lines.append(f"**Technologies**: {', '.join(techs)}")
@@ -390,7 +390,7 @@ def format_results_markdown(results: dict, detailed: bool = False) -> str:
             if isinstance(decisions, str):
                 try:
                     decisions = json.loads(decisions)
-                except:
+                except (json.JSONDecodeError, ValueError):
                     decisions = [decisions]
             if decisions:
                 lines.append("**Decisions**:")

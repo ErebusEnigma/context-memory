@@ -1,6 +1,25 @@
 # context-memory
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-%3E%3D3.8-blue.svg)](https://www.python.org/)
+[![Latest Release](https://img.shields.io/github/v/release/ErebusEnigma/context-memory)](https://github.com/ErebusEnigma/context-memory/releases)
+
 Persistent, searchable context storage across Claude Code sessions using SQLite + FTS5.
+
+## Table of Contents
+
+- [Why?](#why)
+- [Features](#features)
+- [Installation](#installation)
+- [Requirements](#requirements)
+- [Commands](#commands)
+- [How It Works](#how-it-works)
+- [Usage Examples](#usage-examples)
+- [Trigger Phrases](#trigger-phrases)
+- [Database Management](#database-management)
+- [Contributing](#contributing)
+- [License](#license)
+- [Author](#author)
 
 ## Why?
 
@@ -148,10 +167,14 @@ python skills/context-memory/scripts/db_init.py --verify
 python skills/context-memory/scripts/db_init.py --stats
 ```
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and contribution guidelines.
+
 ## License
 
 MIT - See [LICENSE](LICENSE) for details.
 
 ## Author
 
-**Erebus_Enigma**
+**ErebusEnigma**

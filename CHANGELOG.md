@@ -1,5 +1,24 @@
 # Changelog
 
+## [Unreleased]
+
+## [1.0.3] - 2026-02-12
+
+### Fixed
+- Bare `except:` clauses in `db_search.py` replaced with `except (json.JSONDecodeError, ValueError):`
+- Version mismatch in `plugin.json` (was `1.0.0`, now `1.0.2`)
+- Duplicate `VALID_TABLES` definition in `db_init.py` — now imported from `db_utils`
+- Author name standardized to `ErebusEnigma` (no underscore) across LICENSE, plugin.json, README
+
+### Added
+- GitHub Actions CI workflow (Python 3.8, 3.11, 3.12 matrix with tests and ruff linting)
+- `pyproject.toml` with project metadata and ruff configuration
+- README badges (license, Python version, latest release) and table of contents
+- `CONTRIBUTING.md` with development setup and contribution guidelines
+- GitHub issue templates (bug report, feature request) and PR template
+- `CLAUDE.md` with project conventions for Claude Code
+- Extended `.gitignore` with pytest, coverage, mypy, and ruff cache entries
+
 ## [1.0.2] - 2026-02-12
 
 ### Fixed
@@ -9,7 +28,7 @@
 ### Added
 - FTS sync triggers (`code_snippets_ai`, `code_snippets_ad`, `code_snippets_au`) for automatic code snippet indexing
 - Code snippet FTS search in `search_tier1()` alongside summaries and topics
-- Integration test suite (`test_bugfixes.py`) covering force reset and snippet search
+- Integration tests covering force reset and snippet search
 
 ## [1.0.1] - 2026-02-12
 
