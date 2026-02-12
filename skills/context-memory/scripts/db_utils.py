@@ -59,7 +59,19 @@ def hash_project_path(project_path: str) -> str:
     Create a consistent hash for a project path.
     Useful for quick project-scoped queries.
     """
+    import platform
     normalized = os.path.normpath(os.path.abspath(project_path))
+
+    # Fix MSYS2/Git Bash paths: /c/Users/... becomes C:\c\Users\... after abspath
+    if platform.system() == 'Windows' and len(normalized) > 3:
+        parts = normalized.split(os.sep)
+        if len(parts) >= 3 and len(parts[1]) == 1 and parts[1].isalpha():
+            normalized = parts[1].upper() + ':\\' + os.sep.join(parts[2:])
+
+    # Case-insensitive on Windows
+    if platform.system() == 'Windows':
+        normalized = normalized.lower()
+
     return hashlib.sha256(normalized.encode()).hexdigest()[:16]
 
 
@@ -113,8 +125,13 @@ def db_exists() -> bool:
     return DB_PATH.exists()
 
 
+VALID_TABLES = {'sessions', 'messages', 'summaries', 'topics', 'code_snippets'}
+
+
 def get_table_count(table_name: str) -> int:
     """Get the number of rows in a table."""
+    if table_name not in VALID_TABLES:
+        raise ValueError(f"Unknown table: {table_name}")
     if not db_exists():
         return 0
 

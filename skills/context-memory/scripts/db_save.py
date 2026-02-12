@@ -293,6 +293,11 @@ if __name__ == "__main__":
     parser.add_argument('--brief', help="Brief summary")
     parser.add_argument('--detailed', help="Detailed summary")
     parser.add_argument('--topics', help="Comma-separated topics")
+    parser.add_argument('--decisions', help="Comma-separated key decisions")
+    parser.add_argument('--problems', help="Comma-separated problems solved")
+    parser.add_argument('--technologies', help="Comma-separated technologies")
+    parser.add_argument('--outcome', choices=['success', 'partial', 'abandoned'],
+                        help="Session outcome")
     parser.add_argument('--user-note', help="User annotation")
     parser.add_argument('--json', help="JSON file with full session data")
 
@@ -308,7 +313,14 @@ if __name__ == "__main__":
         topics = args.topics.split(',') if args.topics else None
         summary = None
         if args.brief:
-            summary = {'brief': args.brief, 'detailed': args.detailed}
+            summary = {
+                'brief': args.brief,
+                'detailed': args.detailed,
+                'key_decisions': args.decisions.split(',') if args.decisions else None,
+                'problems_solved': args.problems.split(',') if args.problems else None,
+                'technologies': args.technologies.split(',') if args.technologies else None,
+                'outcome': args.outcome,
+            }
 
         result = save_full_session(
             session_id=args.session_id,

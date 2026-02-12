@@ -3,7 +3,7 @@
     "Stop": [
       {
         "type": "command",
-        "command": "python \"${CLAUDE_PLUGIN_ROOT}/skills/context-memory/scripts/db_save.py\" --session-id \"$CLAUDE_SESSION_ID\" --project-path \"$PWD\" --brief \"Auto-saved session\" --topics \"auto-save\""
+        "command": "python ~/.claude/plugins/context-memory/skills/context-memory/scripts/db_save.py --session-id \"auto-$(date +%s)\" --project-path \"$PWD\" --brief \"Auto-saved session\" --topics \"auto-save\""
       }
     ]
   }
