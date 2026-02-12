@@ -156,6 +156,21 @@ CREATE VIRTUAL TABLE topics_fts USING fts5(
 );
 ```
 
+### code_snippets_fts
+
+Full-text search on code snippets, indexing code content, descriptions, and file paths.
+
+```sql
+CREATE VIRTUAL TABLE code_snippets_fts USING fts5(
+    code,
+    description,
+    file_path,
+    content='code_snippets',
+    content_rowid='id',
+    tokenize='porter unicode61'
+);
+```
+
 ## Triggers
 
 ### FTS Sync Triggers
@@ -176,6 +191,11 @@ Automatically keep FTS tables in sync with content tables.
 - `topics_ai` - After INSERT
 - `topics_ad` - After DELETE
 - `topics_au` - After UPDATE
+
+**code_snippets_fts triggers**:
+- `code_snippets_ai` - After INSERT
+- `code_snippets_ad` - After DELETE
+- `code_snippets_au` - After UPDATE
 
 ### Session Updated Trigger
 
@@ -216,6 +236,19 @@ JOIN sessions s ON s.id = t.session_id
 LEFT JOIN summaries sum ON sum.session_id = s.id
 WHERE topics_fts MATCH '"react"*'
 ORDER BY s.created_at DESC;
+```
+
+### Code Snippet Search
+
+```sql
+SELECT DISTINCT s.*, sum.brief
+FROM code_snippets_fts
+JOIN code_snippets cs ON cs.id = code_snippets_fts.rowid
+JOIN sessions s ON s.id = cs.session_id
+LEFT JOIN summaries sum ON sum.session_id = s.id
+WHERE code_snippets_fts MATCH '"asyncHandler"*'
+ORDER BY bm25(code_snippets_fts)
+LIMIT 10;
 ```
 
 ### Project-Scoped Search
