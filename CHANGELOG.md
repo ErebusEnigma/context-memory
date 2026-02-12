@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.2] - 2026-02-12
+
+### Fixed
+- `--force` flag on `db_init.py` now properly resets the database by deleting the file before recreating (#19)
+- Code snippets are now searchable via FTS5 — added `code_snippets_fts` virtual table indexing `code`, `description`, and `file_path` (#16b)
+
+### Added
+- FTS sync triggers (`code_snippets_ai`, `code_snippets_ad`, `code_snippets_au`) for automatic code snippet indexing
+- Code snippet FTS search in `search_tier1()` alongside summaries and topics
+- Integration test suite (`test_bugfixes.py`) covering force reset and snippet search
+
 ## [1.0.1] - 2026-02-12
 
 ### Fixed
