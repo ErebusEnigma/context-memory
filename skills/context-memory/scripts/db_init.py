@@ -101,6 +101,16 @@ CREATE VIRTUAL TABLE IF NOT EXISTS topics_fts USING fts5(
     tokenize='porter unicode61'
 );
 
+-- Code Snippets FTS
+CREATE VIRTUAL TABLE IF NOT EXISTS code_snippets_fts USING fts5(
+    code,
+    description,
+    file_path,
+    content='code_snippets',
+    content_rowid='id',
+    tokenize='porter unicode61'
+);
+
 -- Indexes for performance
 
 CREATE INDEX IF NOT EXISTS idx_sessions_project_hash ON sessions(project_hash);
@@ -160,6 +170,24 @@ CREATE TRIGGER IF NOT EXISTS topics_au AFTER UPDATE ON topics BEGIN
     INSERT INTO topics_fts(rowid, topic) VALUES (NEW.id, NEW.topic);
 END;
 
+-- Code Snippets FTS triggers
+CREATE TRIGGER IF NOT EXISTS code_snippets_ai AFTER INSERT ON code_snippets BEGIN
+    INSERT INTO code_snippets_fts(rowid, code, description, file_path)
+    VALUES (NEW.id, NEW.code, NEW.description, NEW.file_path);
+END;
+
+CREATE TRIGGER IF NOT EXISTS code_snippets_ad AFTER DELETE ON code_snippets BEGIN
+    INSERT INTO code_snippets_fts(code_snippets_fts, rowid, code, description, file_path)
+    VALUES ('delete', OLD.id, OLD.code, OLD.description, OLD.file_path);
+END;
+
+CREATE TRIGGER IF NOT EXISTS code_snippets_au AFTER UPDATE ON code_snippets BEGIN
+    INSERT INTO code_snippets_fts(code_snippets_fts, rowid, code, description, file_path)
+    VALUES ('delete', OLD.id, OLD.code, OLD.description, OLD.file_path);
+    INSERT INTO code_snippets_fts(rowid, code, description, file_path)
+    VALUES (NEW.id, NEW.code, NEW.description, NEW.file_path);
+END;
+
 -- Sessions updated_at trigger
 CREATE TRIGGER IF NOT EXISTS sessions_updated AFTER UPDATE ON sessions BEGIN
     UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
@@ -183,6 +211,10 @@ def init_database(force: bool = False) -> bool:
         print(f"Database already exists at {DB_PATH}")
         return False
 
+    if force and db_exists():
+        os.remove(DB_PATH)
+        print(f"Removed existing database at {DB_PATH}")
+
     with get_connection() as conn:
         conn.executescript(SCHEMA_SQL)
         conn.commit()
@@ -195,7 +227,7 @@ def verify_schema() -> dict:
     """Verify that all expected tables exist."""
     expected_tables = [
         'sessions', 'messages', 'summaries', 'topics', 'code_snippets',
-        'summaries_fts', 'messages_fts', 'topics_fts'
+        'summaries_fts', 'messages_fts', 'topics_fts', 'code_snippets_fts'
     ]
 
     with get_connection(readonly=True) as conn:

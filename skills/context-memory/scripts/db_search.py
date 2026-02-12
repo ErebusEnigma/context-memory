@@ -101,11 +101,41 @@ def search_tier1(
         cursor = conn.execute(sql, params)
         topic_results = [dict(row) for row in cursor.fetchall()]
 
+        # Also search code snippets
+        sql = """
+            SELECT DISTINCT
+                s.id,
+                s.session_id,
+                s.project_path,
+                s.created_at,
+                s.message_count,
+                sum.brief,
+                sum.outcome,
+                sum.technologies,
+                bm25(code_snippets_fts) as relevance
+            FROM code_snippets_fts
+            JOIN code_snippets cs ON cs.id = code_snippets_fts.rowid
+            JOIN sessions s ON s.id = cs.session_id
+            LEFT JOIN summaries sum ON sum.session_id = s.id
+            WHERE code_snippets_fts MATCH ?
+        """
+        params = [fts_query]
+
+        if project_hash:
+            sql += " AND s.project_hash = ?"
+            params.append(project_hash)
+
+        sql += " ORDER BY relevance LIMIT ?"
+        params.append(limit)
+
+        cursor = conn.execute(sql, params)
+        snippet_results = [dict(row) for row in cursor.fetchall()]
+
         # Merge results, removing duplicates
         seen_ids = set()
         merged = []
 
-        for result in summary_results + topic_results:
+        for result in summary_results + topic_results + snippet_results:
             if result['id'] not in seen_ids:
                 seen_ids.add(result['id'])
                 # Get topics for this session
