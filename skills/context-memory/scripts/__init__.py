@@ -4,9 +4,10 @@ Context Memory Scripts Package
 Database utilities for persistent, searchable context storage.
 """
 
-__version__ = "1.0.5"
+__version__ = "1.0.6"
 
 from .db_init import get_stats, init_database, verify_schema
+from .db_prune import prune_sessions
 from .db_save import (
     save_code_snippet,
     save_full_session,
@@ -14,6 +15,7 @@ from .db_save import (
     save_session,
     save_summary,
     save_topics,
+    should_skip_auto_save,
 )
 from .db_search import (
     format_results_markdown,
@@ -52,10 +54,13 @@ __all__ = [
     'save_topics',
     'save_code_snippet',
     'save_full_session',
+    'should_skip_auto_save',
     # Search
     'search_tier1',
     'search_tier2',
     'search_messages',
     'full_search',
     'format_results_markdown',
+    # Prune
+    'prune_sessions',
 ]

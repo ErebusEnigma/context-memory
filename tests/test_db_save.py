@@ -123,3 +123,74 @@ class TestSaveFullSession:
         assert result["messages_count"] == 2
         assert result["topics_count"] == 2
         assert len(result["snippets"]) == 1
+
+
+class TestDeduplication:
+    def test_skip_when_rich_session_exists(self, isolated_db):
+        """Auto-save should be skipped if a rich /remember session exists recently."""
+        db_init.init_database()
+        db_save.save_full_session(
+            session_id="rich-1",
+            project_path="/tmp/myproject",
+            summary={"brief": "Implemented authentication flow"},
+            topics=["auth"],
+        )
+        assert db_save.should_skip_auto_save("/tmp/myproject", window_minutes=5) is True
+
+    def test_proceed_when_only_auto_saves(self, isolated_db):
+        """Auto-save should proceed when only auto-saves exist (no rich sessions)."""
+        db_init.init_database()
+        db_save.save_full_session(
+            session_id="auto-1",
+            project_path="/tmp/myproject",
+            summary={"brief": "Auto-saved session"},
+        )
+        assert db_save.should_skip_auto_save("/tmp/myproject", window_minutes=5) is False
+
+    def test_proceed_when_auto_save_with_project_name(self, isolated_db):
+        """Auto-save with 'Auto-saved session: proj' prefix should not block."""
+        db_init.init_database()
+        db_save.save_full_session(
+            session_id="auto-1",
+            project_path="/tmp/myproject",
+            summary={"brief": "Auto-saved session: myproject"},
+        )
+        assert db_save.should_skip_auto_save("/tmp/myproject", window_minutes=5) is False
+
+    def test_proceed_for_different_project(self, isolated_db):
+        """Auto-save should proceed for a different project path."""
+        db_init.init_database()
+        db_save.save_full_session(
+            session_id="rich-1",
+            project_path="/tmp/project-a",
+            summary={"brief": "Implemented something"},
+        )
+        assert db_save.should_skip_auto_save("/tmp/project-b", window_minutes=5) is False
+
+    def test_proceed_when_no_db(self, isolated_db):
+        """Auto-save should proceed when no database exists."""
+        assert db_save.should_skip_auto_save("/tmp/myproject") is False
+
+    def test_proceed_when_no_project_path(self, isolated_db):
+        """Auto-save should proceed when no project path is provided."""
+        db_init.init_database()
+        assert db_save.should_skip_auto_save("") is False
+        assert db_save.should_skip_auto_save(None) is False
+
+    def test_proceed_when_session_outside_window(self, isolated_db):
+        """Auto-save should proceed if rich session is older than dedup window."""
+        db_init.init_database()
+        project_hash = db_utils.hash_project_path("/tmp/myproject")
+        # Insert directly with backdated timestamp to avoid sessions_updated trigger
+        with db_utils.get_connection() as conn:
+            conn.execute("""
+                INSERT INTO sessions (session_id, project_path, project_hash,
+                    created_at, updated_at)
+                VALUES (?, ?, ?, datetime('now', '-10 minutes'), datetime('now', '-10 minutes'))
+            """, ("rich-1", "/tmp/myproject", project_hash))
+            sid = conn.execute("SELECT id FROM sessions WHERE session_id='rich-1'").fetchone()[0]
+            conn.execute("""
+                INSERT INTO summaries (session_id, brief) VALUES (?, ?)
+            """, (sid, "Old session"))
+            conn.commit()
+        assert db_save.should_skip_auto_save("/tmp/myproject", window_minutes=5) is False

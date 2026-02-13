@@ -12,9 +12,14 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
-# Database location
-DB_DIR = Path.home() / ".claude" / "context-memory"
-DB_PATH = DB_DIR / "context.db"
+# Database location — override with CONTEXT_MEMORY_DB_PATH env var
+_db_path_override = os.environ.get("CONTEXT_MEMORY_DB_PATH")
+if _db_path_override:
+    DB_PATH = Path(_db_path_override)
+    DB_DIR = DB_PATH.parent
+else:
+    DB_DIR = Path.home() / ".claude" / "context-memory"
+    DB_PATH = DB_DIR / "context.db"
 
 
 def ensure_db_dir() -> None:
@@ -126,7 +131,10 @@ def db_exists() -> bool:
     return DB_PATH.exists()
 
 
-VALID_TABLES = {'sessions', 'messages', 'summaries', 'topics', 'code_snippets'}
+VALID_TABLES = {'sessions', 'messages', 'summaries', 'topics', 'code_snippets', 'schema_version'}
+
+# Tables to include in stats output (skip internal tables)
+STATS_TABLES = VALID_TABLES - {'schema_version'}
 
 
 def get_table_count(table_name: str) -> int:

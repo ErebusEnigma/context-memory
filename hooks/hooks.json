@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "test -f ~/.claude/skills/context-memory/scripts/db_save.py && python ~/.claude/skills/context-memory/scripts/db_save.py --session-id \"auto-$(date +%s)\" --project-path \"$PWD\" --brief \"Auto-saved session\" --topics \"auto-save\" || true"
+            "command": "test -f ~/.claude/skills/context-memory/scripts/db_save.py && { PROJ_NAME=$(basename \"$PWD\"); GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo ''); TOPICS=\"auto-save\"; [ -n \"$GIT_BRANCH\" ] && TOPICS=\"$TOPICS,$GIT_BRANCH\"; python ~/.claude/skills/context-memory/scripts/db_save.py --auto --session-id \"auto-$(date +%s)\" --project-path \"$PWD\" --brief \"Auto-saved session: $PROJ_NAME\" --topics \"$TOPICS\"; } || true"
           }
         ]
       }

@@ -12,10 +12,10 @@ import sys
 from typing import Optional
 
 try:
-    from .db_init import init_database
+    from .db_init import ensure_schema_current, init_database
     from .db_utils import db_exists, get_connection, hash_project_path
 except ImportError:
-    from db_init import init_database
+    from db_init import ensure_schema_current, init_database
     from db_utils import db_exists, get_connection, hash_project_path
 
 logger = logging.getLogger(__name__)
@@ -39,6 +39,8 @@ def save_session(
     """
     if not db_exists():
         init_database()
+    else:
+        ensure_schema_current()
 
     project_hash = hash_project_path(project_path) if project_path else None
     metadata_json = json.dumps(metadata) if metadata else None
@@ -235,6 +237,37 @@ def save_code_snippet(
     return cursor.lastrowid
 
 
+def should_skip_auto_save(project_path: str, window_minutes: int = 5) -> bool:
+    """
+    Check if an auto-save should be skipped because a rich session
+    (from /remember) was recently saved for the same project.
+
+    Args:
+        project_path: Project directory path
+        window_minutes: How many minutes back to check
+
+    Returns:
+        True if a rich session exists (auto-save is redundant)
+    """
+    if not project_path or not db_exists():
+        return False
+
+    project_hash = hash_project_path(project_path)
+
+    with get_connection(readonly=True) as conn:
+        cursor = conn.execute("""
+            SELECT COUNT(*) FROM sessions s
+            JOIN summaries sum ON sum.session_id = s.id
+            WHERE s.project_hash = ?
+              AND sum.brief != 'Auto-saved session'
+              AND NOT sum.brief LIKE 'Auto-saved session:%'
+              AND s.updated_at >= datetime('now', ?)
+        """, (project_hash, f'-{window_minutes} minutes'))
+        count = cursor.fetchone()[0]
+
+    return count > 0
+
+
 def save_full_session(
     session_id: str,
     project_path: Optional[str] = None,
@@ -306,8 +339,18 @@ if __name__ == "__main__":
                         help="Session outcome")
     parser.add_argument('--user-note', help="User annotation")
     parser.add_argument('--json', help="JSON file with full session data")
+    parser.add_argument('--auto', action='store_true',
+                        help="Auto-save mode: skip if rich session exists recently")
+    parser.add_argument('--dedup-window', type=int, default=5,
+                        help="Dedup window in minutes (default: 5)")
 
     args = parser.parse_args()
+
+    # Deduplication check for auto-saves
+    if args.auto and args.project_path:
+        if should_skip_auto_save(args.project_path, args.dedup_window):
+            print(json.dumps({"skipped": True, "reason": "rich session exists within dedup window"}))
+            sys.exit(0)
 
     if args.json:
         # Load from JSON file
@@ -324,6 +367,7 @@ if __name__ == "__main__":
     else:
         # Save from arguments
         topics = args.topics.split(',') if args.topics else None
+        metadata = {"auto_save": True} if args.auto else None
         summary = None
         if args.brief:
             summary = {
@@ -335,12 +379,18 @@ if __name__ == "__main__":
                 'outcome': args.outcome,
             }
 
-        result = save_full_session(
+        session_db_id = save_session(
             session_id=args.session_id,
             project_path=args.project_path,
-            summary=summary,
-            topics=topics,
-            user_note=args.user_note
+            metadata=metadata,
         )
+
+        result = {'session_id': session_db_id}
+
+        if summary:
+            result['summary_id'] = save_summary(session_db_id, **summary)
+
+        if topics:
+            result['topics_count'] = save_topics(session_db_id, topics)
 
     print(json.dumps(result, indent=2))

@@ -17,14 +17,18 @@ import json
 import shutil
 from pathlib import Path
 
-PLUGIN_ROOT = Path(__file__).resolve().parent
 CLAUDE_DIR = Path.home() / ".claude"
+PLUGIN_ROOT = Path(__file__).resolve().parent
 
 SKILL_DST = CLAUDE_DIR / "skills" / "context-memory"
 COMMANDS_DST = CLAUDE_DIR / "commands"
+# Source commands for ownership check — may not exist if clone was deleted
 COMMANDS_SRC = PLUGIN_ROOT / "commands"
 SETTINGS_PATH = CLAUDE_DIR / "settings.json"
 DB_DIR = CLAUDE_DIR / "context-memory"
+
+# Known command files installed by this plugin
+OUR_COMMAND_FILES = ["remember.md", "recall.md"]
 
 
 def uninstall_skill() -> str:
@@ -41,7 +45,7 @@ def uninstall_skill() -> str:
 def uninstall_commands() -> str:
     """Remove our command files from ~/.claude/commands/."""
     results = []
-    for cmd_file in ["remember.md", "recall.md"]:
+    for cmd_file in OUR_COMMAND_FILES:
         dst = COMMANDS_DST / cmd_file
         src = COMMANDS_SRC / cmd_file
 
@@ -49,7 +53,7 @@ def uninstall_commands() -> str:
             results.append(f"  {cmd_file}: not installed")
             continue
 
-        # Ownership check: only remove if content matches our source
+        # Ownership check: only skip if source exists AND content differs
         if src.exists():
             src_content = src.read_text(encoding="utf-8")
             dst_content = dst.read_text(encoding="utf-8")
@@ -170,7 +174,7 @@ def main() -> None:
             results.append("Database: no data found")
 
     print("\n".join(results))
-    print(f"\nTo also remove the plugin source: rm -rf {PLUGIN_ROOT}")
+    print("\nDone. Restart Claude Code for changes to take effect.")
 
 
 if __name__ == "__main__":

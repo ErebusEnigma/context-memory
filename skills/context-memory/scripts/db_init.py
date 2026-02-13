@@ -8,9 +8,12 @@ import os
 import sys
 
 try:
-    from .db_utils import DB_PATH, VALID_TABLES, db_exists, ensure_db_dir, get_connection
+    from .db_utils import DB_PATH, STATS_TABLES, db_exists, ensure_db_dir, get_connection
 except ImportError:
-    from db_utils import DB_PATH, VALID_TABLES, db_exists, ensure_db_dir, get_connection
+    from db_utils import DB_PATH, STATS_TABLES, db_exists, ensure_db_dir, get_connection
+
+# Schema versioning
+CURRENT_SCHEMA_VERSION = 2
 
 SCHEMA_SQL = """
 -- Core Tables
@@ -195,7 +198,72 @@ END;
 CREATE TRIGGER IF NOT EXISTS sessions_updated AFTER UPDATE ON sessions BEGIN
     UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
+
+-- Schema versioning
+CREATE TABLE IF NOT EXISTS schema_version (
+    version INTEGER NOT NULL,
+    applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 """
+
+
+def get_schema_version(conn) -> int:
+    """
+    Get the current schema version from the database.
+    Returns 1 if schema_version table doesn't exist (legacy DB).
+    """
+    cursor = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='schema_version'"
+    )
+    if not cursor.fetchone():
+        return 1
+    cursor = conn.execute("SELECT MAX(version) FROM schema_version")
+    row = cursor.fetchone()
+    return row[0] if row[0] is not None else 1
+
+
+def _migrate_v1_to_v2(conn) -> None:
+    """Migrate from v1 (legacy) to v2: add schema_version table."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS schema_version (
+            version INTEGER NOT NULL,
+            applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.execute("INSERT INTO schema_version (version) VALUES (2)")
+
+
+# Migration registry: version -> migration function
+MIGRATIONS = {
+    2: _migrate_v1_to_v2,
+}
+
+
+def apply_migrations(conn) -> int:
+    """
+    Apply pending migrations sequentially.
+    Returns the final schema version.
+    """
+    current = get_schema_version(conn)
+    while current < CURRENT_SCHEMA_VERSION:
+        next_version = current + 1
+        migration_fn = MIGRATIONS.get(next_version)
+        if migration_fn is None:
+            raise RuntimeError(f"No migration found for version {next_version}")
+        migration_fn(conn)
+        current = next_version
+    conn.commit()
+    return current
+
+
+def ensure_schema_current() -> None:
+    """Auto-migrate the database if it exists but the version is behind."""
+    if not db_exists():
+        return
+    with get_connection() as conn:
+        current = get_schema_version(conn)
+        if current < CURRENT_SCHEMA_VERSION:
+            apply_migrations(conn)
 
 
 def init_database(force: bool = False) -> bool:
@@ -224,6 +292,11 @@ def init_database(force: bool = False) -> bool:
 
     with get_connection() as conn:
         conn.executescript(SCHEMA_SQL)
+        # Insert current schema version
+        conn.execute(
+            "INSERT INTO schema_version (version) VALUES (?)",
+            (CURRENT_SCHEMA_VERSION,)
+        )
         conn.commit()
 
     print(f"Database initialized at {DB_PATH}")
@@ -234,7 +307,8 @@ def verify_schema() -> dict:
     """Verify that all expected tables exist."""
     expected_tables = [
         'sessions', 'messages', 'summaries', 'topics', 'code_snippets',
-        'summaries_fts', 'messages_fts', 'topics_fts', 'code_snippets_fts'
+        'summaries_fts', 'messages_fts', 'topics_fts', 'code_snippets_fts',
+        'schema_version',
     ]
 
     with get_connection(readonly=True) as conn:
@@ -260,7 +334,7 @@ def get_stats() -> dict:
     with get_connection(readonly=True) as conn:
         stats = {}
 
-        for table in VALID_TABLES:
+        for table in STATS_TABLES:
             cursor = conn.execute(f"SELECT COUNT(*) FROM {table}")
             stats[table] = cursor.fetchone()[0]
 
