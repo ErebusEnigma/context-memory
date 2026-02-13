@@ -4,17 +4,28 @@ Two-tier search for context-memory plugin.
 Tier 1: Fast summary search (<10ms)
 Tier 2: Deep content search (<50ms)
 """
+from __future__ import annotations
 
+import argparse
 import json
+import logging
 import os
 import sys
-import argparse
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from typing import Optional
-from db_utils import (
-    get_connection, db_exists, hash_project_path,
-    format_fts_query, truncate_text
-)
+
+try:
+    from .db_utils import db_exists, format_fts_query, get_connection, hash_project_path, truncate_text
+except ImportError:
+    from db_utils import db_exists, format_fts_query, get_connection, hash_project_path, truncate_text
+
+logger = logging.getLogger(__name__)
+
+# Display limits for formatted output
+MAX_DECISIONS_DISPLAY = 5
+MAX_MESSAGES_DISPLAY = 10
+MAX_SNIPPETS_DISPLAY = 5
+MAX_MESSAGE_LENGTH = 300
+MAX_SNIPPET_LENGTH = 500
 
 
 def search_tier1(
@@ -196,8 +207,8 @@ def search_tier2(
                 if session.get(field):
                     try:
                         session[field] = json.loads(session[field])
-                    except json.JSONDecodeError:
-                        pass
+                    except (json.JSONDecodeError, ValueError):
+                        logger.warning("Failed to parse JSON in field '%s' for session %d", field, sid)
 
             # Get topics
             cursor = conn.execute(
@@ -380,6 +391,7 @@ def format_results_markdown(results: dict, detailed: bool = False) -> str:
                 try:
                     techs = json.loads(techs)
                 except (json.JSONDecodeError, ValueError):
+                    logger.warning("Failed to parse technologies JSON for session %s", session.get('id'))
                     techs = [techs]
             if techs:
                 lines.append(f"**Technologies**: {', '.join(techs)}")
@@ -391,10 +403,11 @@ def format_results_markdown(results: dict, detailed: bool = False) -> str:
                 try:
                     decisions = json.loads(decisions)
                 except (json.JSONDecodeError, ValueError):
+                    logger.warning("Failed to parse decisions JSON for session %s", session.get('id'))
                     decisions = [decisions]
             if decisions:
                 lines.append("**Decisions**:")
-                for d in decisions[:5]:  # Limit to 5
+                for d in decisions[:MAX_DECISIONS_DISPLAY]:
                     lines.append(f"- {d}")
 
         # Detailed content in expandable section
@@ -415,18 +428,18 @@ def format_results_markdown(results: dict, detailed: bool = False) -> str:
 
                 if messages:
                     lines.append("### Key Messages")
-                    for msg in messages[:10]:  # Limit to 10
+                    for msg in messages[:MAX_MESSAGES_DISPLAY]:
                         role = msg.get('role', 'user').capitalize()
-                        content = truncate_text(msg.get('content', ''), 300)
+                        content = truncate_text(msg.get('content', ''), MAX_MESSAGE_LENGTH)
                         lines.append(f"**{role}**: {content}")
                         lines.append("")
 
                 if snippets:
                     lines.append("### Code Snippets")
-                    for snip in snippets[:5]:  # Limit to 5
+                    for snip in snippets[:MAX_SNIPPETS_DISPLAY]:
                         lang = snip.get('language', '')
                         desc = snip.get('description', 'Code snippet')
-                        code = truncate_text(snip.get('code', ''), 500)
+                        code = truncate_text(snip.get('code', ''), MAX_SNIPPET_LENGTH)
                         lines.append(f"**{desc}**")
                         lines.append(f"```{lang}")
                         lines.append(code)

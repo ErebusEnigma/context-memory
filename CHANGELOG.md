@@ -6,12 +6,12 @@
 
 ### Fixed
 - Bare `except:` clauses in `db_search.py` replaced with `except (json.JSONDecodeError, ValueError):`
-- Version mismatch in `plugin.json` (was `1.0.0`, now `1.0.2`)
+- Version mismatch in `plugin.json` (was `1.0.0`, now `1.0.3`)
 - Duplicate `VALID_TABLES` definition in `db_init.py` — now imported from `db_utils`
 - Author name standardized to `ErebusEnigma` (no underscore) across LICENSE, plugin.json, README
 
 ### Added
-- GitHub Actions CI workflow (Python 3.8, 3.11, 3.12 matrix with tests and ruff linting)
+- GitHub Actions CI workflow with ruff linting and test suite
 - `pyproject.toml` with project metadata and ruff configuration
 - README badges (license, Python version, latest release) and table of contents
 - `CONTRIBUTING.md` with development setup and contribution guidelines

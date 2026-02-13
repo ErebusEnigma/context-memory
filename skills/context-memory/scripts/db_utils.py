@@ -2,13 +2,15 @@
 Database utilities for context-memory plugin.
 Provides connection management and helper functions.
 """
+from __future__ import annotations
 
-import sqlite3
-import os
 import hashlib
-from pathlib import Path
-from typing import Optional, Any
+import os
+import platform
+import sqlite3
 from contextlib import contextmanager
+from pathlib import Path
+from typing import Iterator
 
 # Database location
 DB_DIR = Path.home() / ".claude" / "context-memory"
@@ -26,7 +28,7 @@ def get_db_path() -> Path:
 
 
 @contextmanager
-def get_connection(readonly: bool = False):
+def get_connection(readonly: bool = False) -> Iterator[sqlite3.Connection]:
     """
     Context manager for database connections.
     Uses WAL mode for better concurrent access.
@@ -59,7 +61,6 @@ def hash_project_path(project_path: str) -> str:
     Create a consistent hash for a project path.
     Useful for quick project-scoped queries.
     """
-    import platform
     normalized = os.path.normpath(os.path.abspath(project_path))
 
     # Fix MSYS2/Git Bash paths: /c/Users/... becomes C:\c\Users\... after abspath

@@ -9,7 +9,7 @@ Brief description of what this PR does.
 
 ## Testing
 
-- [ ] `python test_bugfixes.py` passes
+- [ ] `python -m pytest tests/` passes
 - [ ] `ruff check .` passes
 - [ ] Manual testing completed
 

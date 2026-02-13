@@ -8,7 +8,7 @@ A Claude Code plugin that provides persistent, searchable context storage across
 
 ```
 .claude-plugin/plugin.json   # Plugin manifest (version, metadata)
-skills/context-memory/        # Skill definition (instructions.md, triggers)
+skills/context-memory/        # Skill definition (SKILL.md)
   scripts/
     db_init.py               # Schema creation, verification, stats
     db_save.py               # Session storage logic
@@ -23,7 +23,8 @@ hooks/                        # Auto-save stop hook
 ```bash
 python skills/context-memory/scripts/db_init.py --verify  # Verify schema
 python skills/context-memory/scripts/db_init.py --stats   # DB statistics
-ruff check .                                         # Lint
+python -m pytest tests/ -v                                # Run tests
+ruff check .                                              # Lint
 ```
 
 ## Conventions
