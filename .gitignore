@@ -37,3 +37,6 @@ htmlcov/
 .env
 .venv/
 venv/
+
+# Claude Code local settings
+.claude/

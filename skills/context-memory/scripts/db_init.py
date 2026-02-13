@@ -6,8 +6,11 @@ Creates tables, FTS5 virtual tables, indexes, and triggers.
 
 import os
 import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from db_utils import get_connection, ensure_db_dir, db_exists, DB_PATH, VALID_TABLES
+
+try:
+    from .db_utils import DB_PATH, VALID_TABLES, db_exists, ensure_db_dir, get_connection
+except ImportError:
+    from db_utils import DB_PATH, VALID_TABLES, db_exists, ensure_db_dir, get_connection
 
 SCHEMA_SQL = """
 -- Core Tables
@@ -212,7 +215,11 @@ def init_database(force: bool = False) -> bool:
         return False
 
     if force and db_exists():
-        os.remove(DB_PATH)
+        try:
+            os.remove(DB_PATH)
+        except OSError as e:
+            print(f"Error removing database at {DB_PATH}: {e}")
+            return False
         print(f"Removed existing database at {DB_PATH}")
 
     with get_connection() as conn:

@@ -3,16 +3,22 @@
 Session save logic for context-memory plugin.
 Handles storing sessions, summaries, messages, and topics.
 """
+from __future__ import annotations
 
-import json
-import os
-import sys
 import argparse
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from datetime import datetime
+import json
+import logging
+import sys
 from typing import Optional
-from db_utils import get_connection, hash_project_path, db_exists
-from db_init import init_database
+
+try:
+    from .db_init import init_database
+    from .db_utils import db_exists, get_connection, hash_project_path
+except ImportError:
+    from db_init import init_database
+    from db_utils import db_exists, get_connection, hash_project_path
+
+logger = logging.getLogger(__name__)
 
 
 def save_session(
@@ -305,8 +311,15 @@ if __name__ == "__main__":
 
     if args.json:
         # Load from JSON file
-        with open(args.json, 'r') as f:
-            data = json.load(f)
+        try:
+            with open(args.json, 'r') as f:
+                data = json.load(f)
+        except FileNotFoundError:
+            print(f"Error: File not found: {args.json}")
+            sys.exit(1)
+        except json.JSONDecodeError as e:
+            print(f"Error: Invalid JSON in {args.json}: {e}")
+            sys.exit(1)
         result = save_full_session(**data)
     else:
         # Save from arguments

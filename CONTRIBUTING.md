@@ -13,10 +13,10 @@ cd context-memory
 
 2. Ensure you have Python >= 3.8 with SQLite FTS5 support (included in the standard library).
 
-3. (Optional) Install development tools:
+3. Install development tools:
 
 ```bash
-pip install ruff
+pip install ruff pytest
 ```
 
 ## Verify Schema
@@ -35,6 +35,12 @@ Run the linter:
 
 ```bash
 ruff check .
+```
+
+## Running Tests
+
+```bash
+python -m pytest tests/ -v
 ```
 
 ## Making Changes
