@@ -50,16 +50,23 @@ Without it, every session is a blank slate. With it, Claude Code has a long-term
 ## Installation
 
 ```bash
-git clone https://github.com/ErebusEnigma/context-memory.git ~/.claude/plugins/context-memory
-python ~/.claude/plugins/context-memory/install.py
+git clone https://github.com/ErebusEnigma/context-memory.git
+cd context-memory
+python install.py
 ```
 
-The installer copies the skill, commands, and stop hook to the correct Claude Code locations and initializes the database. It's idempotent — run it again to upgrade.
+The installer copies the skill, commands, and stop hook to the correct Claude Code locations (`~/.claude/`) and initializes the database. It's idempotent — run it again to upgrade.
+
+After installation, the cloned directory is no longer needed and can be deleted (or kept for future upgrades):
+
+```bash
+cd .. && rm -rf context-memory   # optional cleanup
+```
 
 Use `--symlink` for development (symlinks the skill directory instead of copying):
 
 ```bash
-python ~/.claude/plugins/context-memory/install.py --symlink
+python install.py --symlink
 ```
 
 > **Windows note**: The stop hook uses Bash syntax (`test -f`, `$(date +%s)`). It works in Git Bash / MSYS2 but not in PowerShell or CMD.
@@ -67,7 +74,7 @@ python ~/.claude/plugins/context-memory/install.py --symlink
 ## Uninstalling
 
 ```bash
-python ~/.claude/plugins/context-memory/uninstall.py
+python ~/.claude/context-memory/uninstall.py
 ```
 
 This removes the skill, commands, and stop hook. Your saved sessions are preserved by default. Use `--remove-data` to also delete the database, or `--keep-data` to skip the prompt.

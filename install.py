@@ -149,6 +149,19 @@ def install_db() -> str:
     return f"Database: init failed — {result.stderr.strip() or result.stdout.strip()}"
 
 
+UNINSTALL_SRC = PLUGIN_ROOT / "uninstall.py"
+UNINSTALL_DST = DB_DIR / "uninstall.py"
+
+
+def install_uninstaller() -> str:
+    """Copy uninstall.py to ~/.claude/context-memory/ so it survives clone deletion."""
+    DB_DIR.mkdir(parents=True, exist_ok=True)
+    if not UNINSTALL_SRC.exists():
+        return "Uninstaller: source not found, skipped"
+    shutil.copy2(str(UNINSTALL_SRC), str(UNINSTALL_DST))
+    return f"Uninstaller: copied to {UNINSTALL_DST}"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Install context-memory plugin for Claude Code")
     parser.add_argument("--symlink", action="store_true", help="Symlink skill instead of copying (for development)")
@@ -175,8 +188,11 @@ def main() -> None:
     if not args.skip_db:
         results.append(install_db())
 
+    results.append(install_uninstaller())
+
     print("\n".join(results))
     print("\nRestart Claude Code for changes to take effect.")
+    print(f"To uninstall later: python {UNINSTALL_DST}")
 
 
 if __name__ == "__main__":

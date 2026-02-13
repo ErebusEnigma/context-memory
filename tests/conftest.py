@@ -17,10 +17,18 @@ sys.path.insert(0, SCRIPTS_DIR)
 def isolated_db(tmp_path, monkeypatch):
     """Use a temporary database for every test."""
     import db_init
+    import db_save
     import db_utils
     db_path = tmp_path / "context.db"
     monkeypatch.setattr(db_utils, "DB_DIR", tmp_path)
     monkeypatch.setattr(db_utils, "DB_PATH", db_path)
-    # db_init imports DB_PATH separately, so patch it there too
+    # Modules that import DB_PATH at module level need patching too
     monkeypatch.setattr(db_init, "DB_PATH", db_path)
+    monkeypatch.setattr(db_save, "DB_PATH", db_path, raising=False)
+    # Patch db_prune if it has been imported
+    try:
+        import db_prune
+        monkeypatch.setattr(db_prune, "DB_PATH", db_path, raising=False)
+    except ImportError:
+        pass
     yield db_path

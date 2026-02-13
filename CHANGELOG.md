@@ -2,6 +2,33 @@
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-02-13
+
+### Added
+- Schema versioning with `schema_version` table and migration system
+- `get_schema_version()`, `apply_migrations()`, `ensure_schema_current()` for automatic DB upgrades
+- Session deduplication: `should_skip_auto_save()` prevents redundant auto-saves when `/remember` was used recently
+- `--auto` and `--dedup-window` CLI flags for `db_save.py`
+- `db_prune.py` for database maintenance: prune by age (`--max-age`), count (`--max-sessions`), or both
+- `--dry-run` flag for prune to preview deletions without executing
+- FTS index rebuild after pruning for guaranteed consistency
+- `CONTEXT_MEMORY_DB_PATH` environment variable override for custom DB location
+- `STATS_TABLES` constant to exclude internal tables from statistics
+- Integration tests: save/search flow, CLI entry points, deduplication, pruning, error handling
+
+### Fixed
+- `/remember` now saves complete session data (detailed summary, decisions, messages, code snippets) via `--json` path instead of the subset-only CLI args path
+- `--detailed` recall now returns full content instead of being identical to standard search
+- Installer no longer leaves an orphaned clone directory; clones to CWD and copies `uninstall.py` to `~/.claude/context-memory/`
+- Uninstaller works standalone without requiring the original clone directory
+
+### Changed
+- `/remember` workflow in remember.md and SKILL.md now uses `--json` as the only save path
+- Stop hook now uses `--auto` flag for deduplication, includes project name in brief, captures git branch as topic
+- `get_stats()` now skips `schema_version` table in output
+- Legacy databases (v1) are automatically migrated to v2 on first save
+- README install instructions clone to current directory instead of `~/.claude/plugins/`
+
 ## [1.0.5] - 2026-02-13
 
 ### Added

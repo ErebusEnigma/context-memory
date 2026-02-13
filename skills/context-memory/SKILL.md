@@ -10,7 +10,7 @@ description: >
 license: "MIT"
 metadata:
   author: "ErebusEnigma"
-  version: "1.0.5"
+  version: "1.0.6"
 ---
 
 # Context Memory Skill
@@ -45,7 +45,7 @@ Save the current session with an optional annotation.
 ### /recall \<query\> [options]
 Search past sessions.
 - `--project`: Limit to current project
-- `--detailed`: Include full message content
+- `--detailed`: Include full message content and code snippets
 - `--limit N`: Maximum results (default: 10)
 
 ## Saving a Session
@@ -64,22 +64,44 @@ When the user wants to save/remember the current session:
 
 3. Identify significant code snippets worth preserving
 
-4. Save with JSON for full data:
+4. Select 5-15 key messages that capture the problem, decisions, and solutions
+
+5. Write a complete JSON file and save via `--json`:
 ```bash
-python "~/.claude/skills/context-memory/scripts/db_save.py" --json /tmp/session_data.json
+cat > /tmp/context_memory_session.json << 'ENDJSON'
+{
+  "session_id": "<UNIQUE_ID>",
+  "project_path": "<PROJECT_PATH>",
+  "messages": [
+    {"role": "user", "content": "..."},
+    {"role": "assistant", "content": "..."}
+  ],
+  "summary": {
+    "brief": "One-line summary",
+    "detailed": "Full 2-3 paragraph summary...",
+    "key_decisions": ["Decision 1", "Decision 2"],
+    "problems_solved": ["Problem 1"],
+    "technologies": ["python", "sqlite"],
+    "outcome": "success"
+  },
+  "topics": ["topic1", "topic2"],
+  "code_snippets": [
+    {
+      "code": "def example(): pass",
+      "language": "python",
+      "description": "What this does",
+      "file_path": "src/example.py"
+    }
+  ],
+  "user_note": "User's note or null"
+}
+ENDJSON
+python "~/.claude/skills/context-memory/scripts/db_save.py" --json /tmp/context_memory_session.json
 ```
 
-Or with individual arguments:
-```bash
-python "~/.claude/skills/context-memory/scripts/db_save.py" \
-  --session-id "<SESSION_ID>" \
-  --project-path "<PROJECT_PATH>" \
-  --brief "<BRIEF_SUMMARY>" \
-  --topics "<COMMA_SEPARATED_TOPICS>" \
-  --user-note "<USER_NOTE>"
-```
+**Important**: Always use `--json` for /remember saves. The CLI args path (`--brief`, `--topics`) only saves a subset of fields and leaves `--detailed` recall empty.
 
-5. Report back: confirmation, brief summary, topics extracted, user note included.
+6. Report back: confirmation, brief summary, topics extracted, message/snippet counts, user note included.
 
 ## Searching Past Sessions
 
@@ -127,7 +149,7 @@ python "~/.claude/skills/context-memory/scripts/db_search.py" "<QUERY>" --format
 
 ## Best Practices
 
-1. **When saving**: Always ask user if they want to add a note/annotation
+1. **When saving**: Always use `--json` for full data. Always ask user if they want to add a note/annotation
 2. **When searching**: Start with tier 1 (summaries), offer detailed search if needed
 3. **Topics**: Use consistent, lowercase topic names
 4. **Summaries**: Focus on the "why" not just the "what"
