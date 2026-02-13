@@ -30,7 +30,7 @@ This skill provides cross-session memory using SQLite with FTS5 full-text search
 ## Database Location
 
 - Database: `~/.claude/context-memory/context.db`
-- Scripts: `${CLAUDE_PLUGIN_ROOT}/skills/context-memory/scripts/`
+- Scripts: `~/.claude/plugins/context-memory/skills/context-memory/scripts/`
 
 ## Commands
 
@@ -63,7 +63,7 @@ When the user wants to save/remember the current session:
 
 4. Run the save script:
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/skills/context-memory/scripts/db_save.py" \
+python "~/.claude/plugins/context-memory/skills/context-memory/scripts/db_save.py" \
   --session-id "<SESSION_ID>" \
   --project-path "<PROJECT_PATH>" \
   --brief "<BRIEF_SUMMARY>" \
@@ -73,7 +73,7 @@ python "${CLAUDE_PLUGIN_ROOT}/skills/context-memory/scripts/db_save.py" \
 
 Or save with full JSON:
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/skills/context-memory/scripts/db_save.py" --json session_data.json
+python "~/.claude/plugins/context-memory/skills/context-memory/scripts/db_save.py" --json session_data.json
 ```
 
 JSON format:
@@ -111,7 +111,7 @@ When the user wants to recall/search past sessions:
 
 1. Run the search script:
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/skills/context-memory/scripts/db_search.py" "<QUERY>" --format markdown
+python "~/.claude/plugins/context-memory/skills/context-memory/scripts/db_search.py" "<QUERY>" --format markdown
 ```
 
 Options:
@@ -131,17 +131,17 @@ Options:
 
 If the database doesn't exist, initialize it:
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/skills/context-memory/scripts/db_init.py"
+python "~/.claude/plugins/context-memory/skills/context-memory/scripts/db_init.py"
 ```
 
 Verify schema:
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/skills/context-memory/scripts/db_init.py" --verify
+python "~/.claude/plugins/context-memory/skills/context-memory/scripts/db_init.py" --verify
 ```
 
 Get statistics:
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/skills/context-memory/scripts/db_init.py" --stats
+python "~/.claude/plugins/context-memory/skills/context-memory/scripts/db_init.py" --stats
 ```
 
 ## Output Format
@@ -154,7 +154,7 @@ When presenting search results to the user, use this format:
 **Results**: 3 sessions
 
 ---
-## 1. 2026-01-15 | my-app (Relevance: 8.5)
+## 1. 2026-01-15 | my-app (Match #1)
 **Summary**: Implemented JWT auth with refresh token rotation
 **Topics**: authentication, JWT, security, Node.js
 **Decisions**:

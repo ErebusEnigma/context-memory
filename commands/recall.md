@@ -46,7 +46,7 @@ When the user runs `/recall`:
    Run the search script:
 
    ```bash
-   python "${CLAUDE_PLUGIN_ROOT}/skills/context-memory/scripts/db_search.py" "<query>" [--project "$(pwd)"] [--detailed] [--limit N] --format markdown
+   python "~/.claude/plugins/context-memory/skills/context-memory/scripts/db_search.py" "<query>" [--project "$(pwd)"] [--detailed] [--limit N] --format markdown
    ```
 
 3. **Present Results**
@@ -59,7 +59,7 @@ When the user runs `/recall`:
    **Results**: 3 sessions
 
    ---
-   ## 1. 2026-01-15 | my-app (Relevance: 8.5)
+   ## 1. 2026-01-15 | my-app (Match #1)
    **Summary**: Implemented JWT auth with refresh token rotation
    **Topics**: authentication, JWT, security, Node.js
    **Decisions**:
