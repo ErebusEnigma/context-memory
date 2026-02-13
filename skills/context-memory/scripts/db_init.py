@@ -254,6 +254,9 @@ def verify_schema() -> dict:
 
 def get_stats() -> dict:
     """Get database statistics."""
+    if not db_exists():
+        return {}
+
     with get_connection(readonly=True) as conn:
         stats = {}
 
@@ -278,6 +281,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.verify:
+        if not db_exists():
+            print("Database does not exist. Run without --verify to initialize.")
+            sys.exit(1)
         result = verify_schema()
         if result['valid']:
             print("Schema is valid")

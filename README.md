@@ -52,6 +52,42 @@ Without it, every session is a blank slate. With it, Claude Code has a long-term
 git clone https://github.com/ErebusEnigma/context-memory.git ~/.claude/plugins/context-memory
 ```
 
+### Post-Install Setup
+
+After cloning, complete these steps:
+
+1. **Initialize the database** (optional — the plugin auto-creates it on first save):
+   ```bash
+   python ~/.claude/plugins/context-memory/skills/context-memory/scripts/db_init.py
+   ```
+
+2. **Register the stop hook** — copy the hook from `hooks/hooks.json` into your `~/.claude/settings.json`:
+   ```json
+   {
+     "hooks": {
+       "Stop": [
+         {
+           "type": "command",
+           "command": "test -f ~/.claude/plugins/context-memory/skills/context-memory/scripts/db_save.py && python ~/.claude/plugins/context-memory/skills/context-memory/scripts/db_save.py --session-id \"auto-$(date +%s)\" --project-path \"$PWD\" --brief \"Auto-saved session\" --topics \"auto-save\" || true"
+         }
+       ]
+     }
+   }
+   ```
+
+3. **Verify** (optional):
+   ```bash
+   python ~/.claude/plugins/context-memory/skills/context-memory/scripts/db_init.py --verify
+   ```
+
+### Upgrading from Earlier Versions
+
+If you have an older stop hook in `~/.claude/settings.json` that looks like:
+```
+python ~/.claude/plugins/context-memory/.../db_save.py --session-id ...
+```
+Replace it with the version above, which includes `test -f` and `|| true` guards so it fails silently if the plugin is removed.
+
 ## Requirements
 
 - Python >= 3.8
