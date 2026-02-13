@@ -43,6 +43,11 @@ ruff check .
 python -m pytest tests/ -v
 ```
 
+## Project Structure Notes
+
+- `.claude-plugin/plugin.json` is **not** part of the Anthropic skill spec. It exists for potential future plugin registry use. The canonical metadata lives in `skills/context-memory/SKILL.md` frontmatter.
+- The skill spec is defined by Anthropic's [skill guide](https://resources.anthropic.com/hubfs/The-Complete-Guide-to-Building-Skill-for-Claude.pdf): `SKILL.md`, `scripts/`, `references/`, `assets/`.
+
 ## Making Changes
 
 1. Fork the repository and create a feature branch from `main`.
