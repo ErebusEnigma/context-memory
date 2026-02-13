@@ -59,13 +59,13 @@ When the user runs `/remember`:
    Run the save script:
 
    ```bash
-   python "~/.claude/plugins/context-memory/skills/context-memory/scripts/db_save.py" --json /tmp/session_data.json
+   python "~/.claude/skills/context-memory/scripts/db_save.py" --json /tmp/session_data.json
    ```
 
    Or with individual arguments:
 
    ```bash
-   python "~/.claude/plugins/context-memory/skills/context-memory/scripts/db_save.py" \
+   python "~/.claude/skills/context-memory/scripts/db_save.py" \
      --session-id "$(uuidgen || cat /proc/sys/kernel/random/uuid)" \
      --project-path "$(pwd)" \
      --brief "Brief summary here" \

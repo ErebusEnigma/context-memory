@@ -46,7 +46,7 @@ When the user runs `/recall`:
    Run the search script:
 
    ```bash
-   python "~/.claude/plugins/context-memory/skills/context-memory/scripts/db_search.py" "<query>" [--project "$(pwd)"] [--detailed] [--limit N] --format markdown
+   python "~/.claude/skills/context-memory/scripts/db_search.py" "<query>" [--project "$(pwd)"] [--detailed] [--limit N] --format markdown
    ```
 
 3. **Present Results**

@@ -354,7 +354,10 @@ def format_results_markdown(results: dict, detailed: bool = False) -> str:
     ]
 
     if not results['sessions']:
-        lines.append("No matching sessions found.")
+        if not db_exists():
+            lines.append("No sessions stored yet. Use /remember to save your first session.")
+        else:
+            lines.append("No matching sessions found. Try broader search terms or remove the --project filter.")
         return '\n'.join(lines)
 
     lines.append("---")

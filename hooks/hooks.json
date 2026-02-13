@@ -2,8 +2,12 @@
   "hooks": {
     "Stop": [
       {
-        "type": "command",
-        "command": "test -f ~/.claude/plugins/context-memory/skills/context-memory/scripts/db_save.py && python ~/.claude/plugins/context-memory/skills/context-memory/scripts/db_save.py --session-id \"auto-$(date +%s)\" --project-path \"$PWD\" --brief \"Auto-saved session\" --topics \"auto-save\" || true"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -f ~/.claude/skills/context-memory/scripts/db_save.py && python ~/.claude/skills/context-memory/scripts/db_save.py --session-id \"auto-$(date +%s)\" --project-path \"$PWD\" --brief \"Auto-saved session\" --topics \"auto-save\" || true"
+          }
+        ]
       }
     ]
   }

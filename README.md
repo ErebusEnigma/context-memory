@@ -11,6 +11,7 @@ Persistent, searchable context storage across Claude Code sessions using SQLite 
 - [Why?](#why)
 - [Features](#features)
 - [Installation](#installation)
+- [Uninstalling](#uninstalling)
 - [Requirements](#requirements)
 - [Commands](#commands)
 - [How It Works](#how-it-works)
@@ -50,43 +51,26 @@ Without it, every session is a blank slate. With it, Claude Code has a long-term
 
 ```bash
 git clone https://github.com/ErebusEnigma/context-memory.git ~/.claude/plugins/context-memory
+python ~/.claude/plugins/context-memory/install.py
 ```
 
-### Post-Install Setup
+The installer copies the skill, commands, and stop hook to the correct Claude Code locations and initializes the database. It's idempotent — run it again to upgrade.
 
-After cloning, complete these steps:
+Use `--symlink` for development (symlinks the skill directory instead of copying):
 
-1. **Initialize the database** (optional — the plugin auto-creates it on first save):
-   ```bash
-   python ~/.claude/plugins/context-memory/skills/context-memory/scripts/db_init.py
-   ```
-
-2. **Register the stop hook** — copy the hook from `hooks/hooks.json` into your `~/.claude/settings.json`:
-   ```json
-   {
-     "hooks": {
-       "Stop": [
-         {
-           "type": "command",
-           "command": "test -f ~/.claude/plugins/context-memory/skills/context-memory/scripts/db_save.py && python ~/.claude/plugins/context-memory/skills/context-memory/scripts/db_save.py --session-id \"auto-$(date +%s)\" --project-path \"$PWD\" --brief \"Auto-saved session\" --topics \"auto-save\" || true"
-         }
-       ]
-     }
-   }
-   ```
-
-3. **Verify** (optional):
-   ```bash
-   python ~/.claude/plugins/context-memory/skills/context-memory/scripts/db_init.py --verify
-   ```
-
-### Upgrading from Earlier Versions
-
-If you have an older stop hook in `~/.claude/settings.json` that looks like:
+```bash
+python ~/.claude/plugins/context-memory/install.py --symlink
 ```
-python ~/.claude/plugins/context-memory/.../db_save.py --session-id ...
+
+> **Windows note**: The stop hook uses Bash syntax (`test -f`, `$(date +%s)`). It works in Git Bash / MSYS2 but not in PowerShell or CMD.
+
+## Uninstalling
+
+```bash
+python ~/.claude/plugins/context-memory/uninstall.py
 ```
-Replace it with the version above, which includes `test -f` and `|| true` guards so it fails silently if the plugin is removed.
+
+This removes the skill, commands, and stop hook. Your saved sessions are preserved by default. Use `--remove-data` to also delete the database, or `--keep-data` to skip the prompt.
 
 ## Requirements
 
