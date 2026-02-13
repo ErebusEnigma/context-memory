@@ -127,6 +127,54 @@ class TestCLIEntryPoints:
         output = json.loads(result.stdout)
         assert "session_id" in output
 
+    def test_db_save_json_standalone(self, isolated_db):
+        """--json should work without --session-id (session_id comes from JSON)."""
+        import tempfile
+        env = {**os.environ, "CONTEXT_MEMORY_DB_PATH": str(isolated_db)}
+        subprocess.run(
+            [sys.executable, os.path.join(SCRIPTS_DIR, "db_init.py")],
+            capture_output=True, text=True, env=env,
+        )
+        payload = {
+            "session_id": "json-standalone-1",
+            "project_path": "/tmp/json-project",
+            "messages": [
+                {"role": "user", "content": "How do I use decorators?"},
+                {"role": "assistant", "content": "Here's how decorators work..."},
+            ],
+            "summary": {
+                "brief": "Explained Python decorators",
+                "detailed": "Covered decorator syntax, use cases, and functools.wraps.",
+                "key_decisions": ["Use functools.wraps for metadata preservation"],
+                "technologies": ["python"],
+                "outcome": "success",
+            },
+            "topics": ["python", "decorators"],
+            "code_snippets": [
+                {
+                    "code": "def my_decorator(func):\n    @wraps(func)\n    def wrapper(*args):\n        return func(*args)\n    return wrapper",
+                    "language": "python",
+                    "description": "Basic decorator pattern",
+                }
+            ],
+        }
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(payload, f)
+            json_path = f.name
+        try:
+            result = subprocess.run(
+                [sys.executable, os.path.join(SCRIPTS_DIR, "db_save.py"),
+                 "--json", json_path],
+                capture_output=True, text=True, env=env,
+            )
+            assert result.returncode == 0, f"stderr: {result.stderr}"
+            output = json.loads(result.stdout)
+            assert "session_id" in output
+            assert output.get("messages_count") == 2
+            assert len(output.get("snippets", [])) == 1
+        finally:
+            os.unlink(json_path)
+
     def test_db_save_auto_mode(self, isolated_db):
         env = {**os.environ, "CONTEXT_MEMORY_DB_PATH": str(isolated_db)}
         # Init and save a rich session first

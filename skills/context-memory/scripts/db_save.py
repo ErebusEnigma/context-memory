@@ -327,7 +327,7 @@ def save_full_session(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Save session to context-memory")
-    parser.add_argument('--session-id', required=True, help="Session ID")
+    parser.add_argument('--session-id', help="Session ID (required unless --json is used)")
     parser.add_argument('--project-path', help="Project path")
     parser.add_argument('--brief', help="Brief summary")
     parser.add_argument('--detailed', help="Detailed summary")
@@ -338,13 +338,17 @@ if __name__ == "__main__":
     parser.add_argument('--outcome', choices=['success', 'partial', 'abandoned'],
                         help="Session outcome")
     parser.add_argument('--user-note', help="User annotation")
-    parser.add_argument('--json', help="JSON file with full session data")
+    parser.add_argument('--json', help="JSON file with full session data (standalone, no other args required)")
     parser.add_argument('--auto', action='store_true',
                         help="Auto-save mode: skip if rich session exists recently")
     parser.add_argument('--dedup-window', type=int, default=5,
                         help="Dedup window in minutes (default: 5)")
 
     args = parser.parse_args()
+
+    # --session-id is required unless --json is provided
+    if not args.json and not args.session_id:
+        parser.error("--session-id is required when --json is not provided")
 
     # Deduplication check for auto-saves
     if args.auto and args.project_path:
