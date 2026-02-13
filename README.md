@@ -48,14 +48,6 @@ Without it, every session is a blank slate. With it, Claude Code has a long-term
 
 ## Installation
 
-### From Plugin Directory
-
-```bash
-claude plugin install context-memory
-```
-
-### Manual Install
-
 ```bash
 git clone https://github.com/ErebusEnigma/context-memory.git ~/.claude/plugins/context-memory
 ```
