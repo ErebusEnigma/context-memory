@@ -2,6 +2,7 @@
 
 import db_init
 import db_utils
+import pytest
 
 
 class TestInitDatabase:
@@ -41,3 +42,15 @@ class TestInitDatabase:
         for table in db_utils.VALID_TABLES:
             assert stats[table] == 0
         assert stats['db_size_bytes'] > 0
+
+    def test_get_stats_no_db_returns_empty(self, isolated_db):
+        assert not isolated_db.exists()
+        stats = db_init.get_stats()
+        assert stats == {}
+
+    def test_verify_schema_no_db_raises(self, isolated_db):
+        """verify_schema() requires the DB to exist; callers should check db_exists() first."""
+        import sqlite3
+        assert not isolated_db.exists()
+        with pytest.raises(sqlite3.OperationalError):
+            db_init.verify_schema()

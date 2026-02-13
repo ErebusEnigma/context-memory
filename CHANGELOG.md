@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-02-13
+
+### Fixed
+- `db_init.py --verify` no longer crashes on fresh install when database doesn't exist
+- `get_stats()` returns empty dict instead of crashing when database is missing
+
+### Added
+- Post-install setup instructions in README (DB init, hook registration, verify)
+- Hook upgrade guide in README for users with older stop hook versions
+- Tests for `--verify` and `--stats` on missing database
+
 ## [1.0.3] - 2026-02-12
 
 ### Fixed
