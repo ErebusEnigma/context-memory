@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-02-13
+
+### Added
+- `install.py` for one-command setup (copies skill, commands, hooks, inits DB)
+- `uninstall.py` for clean removal
+- Negative triggers in SKILL.md to prevent over-activation
+- Error handling instructions in SKILL.md
+- Helpful first-use message when searching an empty database
+
+### Fixed
+- `hooks/hooks.json` uses correct nested matcher-group format for settings.json
+- SKILL.md frontmatter expanded to match Claude Code skill guide spec
+- Script paths in SKILL.md and commands updated from plugins/ to skills/ directory
+
+### Changed
+- SKILL.md restructured for progressive disclosure (lean body, details in references/)
+- README simplified: install.py replaces manual post-install steps
+
 ## [1.0.4] - 2026-02-13
 
 ### Fixed

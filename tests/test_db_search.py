@@ -96,7 +96,13 @@ class TestFullSearch:
 
 
 class TestFormatResultsMarkdown:
-    def test_format_empty_results(self, isolated_db):
+    def test_format_empty_results_no_db(self, isolated_db):
+        results = {"query": "test", "result_count": 0, "sessions": []}
+        md = db_search.format_results_markdown(results)
+        assert "No sessions stored yet" in md
+
+    def test_format_empty_results_with_db(self, isolated_db):
+        db_init.init_database()
         results = {"query": "test", "result_count": 0, "sessions": []}
         md = db_search.format_results_markdown(results)
         assert "No matching sessions found" in md

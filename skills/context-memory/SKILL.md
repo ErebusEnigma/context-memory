@@ -1,36 +1,41 @@
 ---
 name: "context-memory"
-description: "Persistent, searchable context storage across Claude Code sessions"
+description: >
+  Persistent cross-session memory for Claude Code using SQLite + FTS5.
+  Use when the user wants to save session context (/remember) or search
+  past sessions (/recall). Triggers: 'remember this', 'save this session',
+  'recall', 'search past sessions', 'what did we discuss about',
+  'find previous work on'. Do NOT use for general file storage,
+  note-taking, or bookmark management.
+license: "MIT"
+metadata:
+  author: "ErebusEnigma"
+  version: "1.0.5"
 ---
 
 # Context Memory Skill
 
-A persistent, searchable context storage system for Claude Code sessions.
+Persistent, searchable context storage across Claude Code sessions.
 
 ## Trigger Phrases
 
 Activate this skill when the user says:
-- "remember this"
-- "save this session"
-- "store this for later"
-- "recall" or "search past sessions"
+- "remember this" / "save this session" / "store this for later"
+- "recall" / "search past sessions"
 - "what did we discuss about..."
 - "find previous work on..."
 - "look up past decisions about..."
 - "context memory"
 
-## Overview
-
-This skill provides cross-session memory using SQLite with FTS5 full-text search. It enables:
-- Saving session summaries, decisions, and key messages
-- Fast retrieval of past work (<50ms)
-- Project-scoped or global search
-- Topic-based categorization
+Do NOT activate for:
+- General file storage or note-taking requests
+- Bookmark or URL management
+- Requests about Claude's built-in memory features
 
 ## Database Location
 
 - Database: `~/.claude/context-memory/context.db`
-- Scripts: `~/.claude/plugins/context-memory/skills/context-memory/scripts/`
+- Scripts: `~/.claude/skills/context-memory/scripts/`
 
 ## Commands
 
@@ -43,27 +48,30 @@ Search past sessions.
 - `--detailed`: Include full message content
 - `--limit N`: Maximum results (default: 10)
 
-## Workflows
-
-### Saving a Session
+## Saving a Session
 
 When the user wants to save/remember the current session:
 
-1. Generate a structured summary of the conversation:
-   - Brief: One-line summary of what was accomplished
-   - Detailed: 2-3 paragraph detailed summary
-   - Key Decisions: List of important decisions made
-   - Problems Solved: List of problems that were resolved
-   - Technologies: List of technologies/tools used
-   - Outcome: success | partial | abandoned
+1. Generate a structured summary:
+   - **brief**: One-line summary of what was accomplished
+   - **detailed**: 2-3 paragraph detailed summary
+   - **key_decisions**: List of important decisions made
+   - **problems_solved**: List of problems that were resolved
+   - **technologies**: List of technologies/tools used
+   - **outcome**: success | partial | abandoned
 
-2. Extract relevant topics (e.g., "authentication", "react", "debugging")
+2. Extract 3-8 relevant topics (lowercase, e.g., "authentication", "react", "debugging")
 
-3. Identify any significant code snippets worth preserving
+3. Identify significant code snippets worth preserving
 
-4. Run the save script:
+4. Save with JSON for full data:
 ```bash
-python "~/.claude/plugins/context-memory/skills/context-memory/scripts/db_save.py" \
+python "~/.claude/skills/context-memory/scripts/db_save.py" --json /tmp/session_data.json
+```
+
+Or with individual arguments:
+```bash
+python "~/.claude/skills/context-memory/scripts/db_save.py" \
   --session-id "<SESSION_ID>" \
   --project-path "<PROJECT_PATH>" \
   --brief "<BRIEF_SUMMARY>" \
@@ -71,82 +79,25 @@ python "~/.claude/plugins/context-memory/skills/context-memory/scripts/db_save.p
   --user-note "<USER_NOTE>"
 ```
 
-Or save with full JSON:
-```bash
-python "~/.claude/plugins/context-memory/skills/context-memory/scripts/db_save.py" --json session_data.json
-```
+5. Report back: confirmation, brief summary, topics extracted, user note included.
 
-JSON format:
-```json
-{
-  "session_id": "unique-session-id",
-  "project_path": "/path/to/project",
-  "messages": [
-    {"role": "user", "content": "..."},
-    {"role": "assistant", "content": "..."}
-  ],
-  "summary": {
-    "brief": "One-line summary",
-    "detailed": "Detailed description...",
-    "key_decisions": ["Decision 1", "Decision 2"],
-    "problems_solved": ["Problem 1"],
-    "technologies": ["Python", "SQLite"],
-    "outcome": "success"
-  },
-  "topics": ["database", "search", "fts5"],
-  "code_snippets": [
-    {
-      "code": "def example(): pass",
-      "language": "python",
-      "description": "Example function"
-    }
-  ],
-  "user_note": "User's custom annotation"
-}
-```
-
-### Searching Past Sessions
+## Searching Past Sessions
 
 When the user wants to recall/search past sessions:
 
-1. Run the search script:
+1. Run the search:
 ```bash
-python "~/.claude/plugins/context-memory/skills/context-memory/scripts/db_search.py" "<QUERY>" --format markdown
+python "~/.claude/skills/context-memory/scripts/db_search.py" "<QUERY>" --format markdown [--project "$(pwd)"] [--detailed] [--limit N]
 ```
 
-Options:
-- `--project /path/to/project`: Filter by project
-- `--detailed`: Include full messages and code
-- `--limit N`: Limit results (default: 10)
-- `--format json|markdown`: Output format
-
-2. Present results to user in a clear format
+2. Present results in a clear, scannable format.
 
 3. If results are insufficient, offer to:
    - Broaden the search query
-   - Search in messages directly (deeper search)
-   - Remove project filter
-
-### Initializing the Database
-
-If the database doesn't exist, initialize it:
-```bash
-python "~/.claude/plugins/context-memory/skills/context-memory/scripts/db_init.py"
-```
-
-Verify schema:
-```bash
-python "~/.claude/plugins/context-memory/skills/context-memory/scripts/db_init.py" --verify
-```
-
-Get statistics:
-```bash
-python "~/.claude/plugins/context-memory/skills/context-memory/scripts/db_init.py" --stats
-```
+   - Remove the `--project` filter
+   - Search with `--detailed` for deeper content
 
 ## Output Format
-
-When presenting search results to the user, use this format:
 
 ```markdown
 # Context Memory Results
@@ -166,6 +117,14 @@ When presenting search results to the user, use this format:
 </details>
 ```
 
+## Error Handling
+
+- **Database doesn't exist**: Auto-created on first save. To manually init: `python ~/.claude/skills/context-memory/scripts/db_init.py`
+- **Database locked**: Another process may be using it. Ask the user to check for other Claude Code instances and retry.
+- **Save fails**: Check file permissions on `~/.claude/context-memory/`. The directory must be writable.
+- **Search returns no results**: Suggest broader terms, remove `--project` filter, or try related keywords.
+- **Empty database (fresh install)**: Show "No sessions stored yet. Use /remember to save your first session."
+
 ## Best Practices
 
 1. **When saving**: Always ask user if they want to add a note/annotation
@@ -174,21 +133,7 @@ When presenting search results to the user, use this format:
 4. **Summaries**: Focus on the "why" not just the "what"
 5. **Code snippets**: Only save truly reusable or significant code
 
-## Error Handling
-
-- If database doesn't exist, run `db_init.py` first
-- If search returns no results, suggest broader terms
-- If save fails, check file permissions on `~/.claude/context-memory/`
-
-## Performance Targets
-
-| Operation | Target |
-|-----------|--------|
-| Tier 1 Search | < 10ms |
-| Tier 2 Fetch | < 50ms |
-| Save Session | < 100ms |
-
 ## Related Files
 
-- [Schema Reference](references/schema-reference.md) - Full database schema
+- [Schema Reference](references/schema-reference.md) — Full database schema
 - Scripts in `scripts/` directory
