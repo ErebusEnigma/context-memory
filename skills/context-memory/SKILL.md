@@ -1,13 +1,14 @@
 ---
 name: "context-memory"
 description: >
-  Persistent cross-session memory for Claude Code using SQLite + FTS5.
-  Use when the user wants to save session context (/remember) or search
-  past sessions (/recall). Triggers: 'remember this', 'save this session',
-  'recall', 'search past sessions', 'what did we discuss about',
-  'find previous work on'. Do NOT use for general file storage,
-  note-taking, or bookmark management.
+  Saves and searches past Claude Code sessions so context, decisions, and
+  code persist across conversations. Use when user says 'remember this',
+  'save this session', 'recall', 'search past sessions', 'what did we
+  discuss about', or 'find previous work on'. Do NOT use for general file
+  storage, note-taking, or bookmark management.
 license: "MIT"
+compatibility: "Requires Python >= 3.8 with sqlite3 FTS5 support (included in standard library). Claude Code CLI only."
+allowed-tools: "Bash(python:*)"
 metadata:
   author: "ErebusEnigma"
   version: "1.0.6"
@@ -15,7 +16,7 @@ metadata:
 
 # Context Memory Skill
 
-Persistent, searchable context storage across Claude Code sessions.
+Saves and searches past Claude Code sessions so context, decisions, and code persist across conversations.
 
 ## Trigger Phrases
 
@@ -47,6 +48,31 @@ Search past sessions.
 - `--project`: Limit to current project
 - `--detailed`: Include full message content and code snippets
 - `--limit N`: Maximum results (default: 10)
+
+## Examples
+
+### Example 1: Save after a debugging session
+User says: `/remember "Fixed the JWT refresh bug"`
+Actions:
+1. Analyze conversation, generate structured summary
+2. Extract topics: `debugging`, `jwt`, `authentication`
+3. Select key messages capturing the problem and fix
+4. Write JSON with all fields and save via `--json`
+Result: "Session saved. **Summary**: Fixed JWT refresh token expiration bug by adding clock skew tolerance. **Topics**: debugging, jwt, authentication. **Messages**: 8 saved. **Snippets**: 1 saved. **Note**: Fixed the JWT refresh bug."
+
+### Example 2: Find past work on a topic
+User says: "what did we discuss about database migrations?"
+Actions:
+1. Run `db_search.py "database migrations" --format markdown`
+2. Present matching sessions with summaries and topics
+Result: Sessions displayed with brief summaries. Offer `--detailed` for full context.
+
+### Example 3: Deep dive into a past session
+User says: `/recall authentication --detailed`
+Actions:
+1. Run `db_search.py "authentication" --detailed --format markdown`
+2. Present full summaries, key messages, and code snippets
+Result: Complete session context with decisions, messages, and code excerpts in expandable sections.
 
 ## Saving a Session
 

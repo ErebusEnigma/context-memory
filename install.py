@@ -49,7 +49,8 @@ def install_skill(symlink: bool = False) -> str:
 
     if SKILL_DST.exists():
         shutil.rmtree(SKILL_DST)
-    shutil.copytree(str(SKILL_SRC), str(SKILL_DST))
+    shutil.copytree(str(SKILL_SRC), str(SKILL_DST),
+                    ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
     return "Skill copied"
 
 
