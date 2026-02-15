@@ -81,6 +81,11 @@ def hash_project_path(project_path: str) -> str:
     return hashlib.sha256(normalized.encode()).hexdigest()[:16]
 
 
+def normalize_project_path(project_path: str) -> str:
+    """Normalize a project path for consistent cross-platform storage."""
+    return project_path.replace('\\', '/')
+
+
 def escape_fts_query(query: str) -> str:
     """
     Escape special characters in FTS5 queries.

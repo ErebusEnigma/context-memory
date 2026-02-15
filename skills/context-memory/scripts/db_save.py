@@ -13,10 +13,10 @@ from typing import Optional
 
 try:
     from .db_init import ensure_schema_current, init_database
-    from .db_utils import db_exists, get_connection, hash_project_path
+    from .db_utils import db_exists, get_connection, hash_project_path, normalize_project_path
 except ImportError:
     from db_init import ensure_schema_current, init_database
-    from db_utils import db_exists, get_connection, hash_project_path
+    from db_utils import db_exists, get_connection, hash_project_path, normalize_project_path
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +41,9 @@ def save_session(
         init_database()
     else:
         ensure_schema_current()
+
+    if project_path:
+        project_path = normalize_project_path(project_path)
 
     project_hash = hash_project_path(project_path) if project_path else None
     metadata_json = json.dumps(metadata) if metadata else None
@@ -338,7 +341,7 @@ if __name__ == "__main__":
     parser.add_argument('--outcome', choices=['success', 'partial', 'abandoned'],
                         help="Session outcome")
     parser.add_argument('--user-note', help="User annotation")
-    parser.add_argument('--json', help="JSON file with full session data (standalone, no other args required)")
+    parser.add_argument('--json', help="JSON file with full session data, or '-' to read from stdin (standalone, no other args required)")
     parser.add_argument('--auto', action='store_true',
                         help="Auto-save mode: skip if rich session exists recently")
     parser.add_argument('--dedup-window', type=int, default=5,
@@ -357,15 +360,19 @@ if __name__ == "__main__":
             sys.exit(0)
 
     if args.json:
-        # Load from JSON file
+        # Load from JSON file or stdin
         try:
-            with open(args.json, 'r') as f:
-                data = json.load(f)
+            if args.json == '-':
+                data = json.load(sys.stdin)
+            else:
+                with open(args.json, 'r') as f:
+                    data = json.load(f)
         except FileNotFoundError:
             print(f"Error: File not found: {args.json}")
             sys.exit(1)
         except json.JSONDecodeError as e:
-            print(f"Error: Invalid JSON in {args.json}: {e}")
+            source = "stdin" if args.json == '-' else args.json
+            print(f"Error: Invalid JSON in {source}: {e}")
             sys.exit(1)
         result = save_full_session(**data)
     else:
