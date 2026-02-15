@@ -69,7 +69,7 @@ Use `--symlink` for development (symlinks the skill directory instead of copying
 python install.py --symlink
 ```
 
-> **Windows note**: The stop hook uses Bash syntax (`test -f`, `$(date +%s)`). It works in Git Bash / MSYS2 but not in PowerShell or CMD.
+> **Note**: The stop hook uses a Python wrapper (`auto_save.py`) and works cross-platform — Windows (CMD, PowerShell), macOS, and Linux.
 
 ## Uninstalling
 
