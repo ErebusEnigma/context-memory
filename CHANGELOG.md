@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [1.0.9] - 2026-02-15
+
+### Fixed
+- Windows: stop hook failed because `cmd.exe` does not expand `~` in paths — installer now resolves `~` to the full home directory at install time on Windows
+
+### Changed
+- `install.py`: `install_hooks()` now updates outdated hooks in-place (supports upgrades from v1.0.8)
+- `install.py`: added `_platform_hook_command()` helper for platform-specific path expansion
+
+### Added
+- `tests/test_install.py` — tests for hook path expansion and upgrade logic
+
 ## [1.0.8] - 2026-02-15
 
 ### Fixed
