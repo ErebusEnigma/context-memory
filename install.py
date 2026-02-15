@@ -87,8 +87,8 @@ def install_commands() -> str:
 
 
 def _hook_matches(command: str) -> bool:
-    """Check if a hook command string is ours (contains context-memory AND db_save.py)."""
-    return "context-memory" in command and "db_save.py" in command
+    """Check if a hook command string is ours (contains context-memory AND a known script)."""
+    return "context-memory" in command and ("db_save.py" in command or "auto_save.py" in command)
 
 
 def install_hooks() -> str:

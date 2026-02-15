@@ -76,7 +76,7 @@ def uninstall_commands() -> str:
 
 def _hook_matches(command: str) -> bool:
     """Check if a hook command string is ours."""
-    return "context-memory" in command and "db_save.py" in command
+    return "context-memory" in command and ("db_save.py" in command or "auto_save.py" in command)
 
 
 def uninstall_hooks() -> str:

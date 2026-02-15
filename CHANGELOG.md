@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [1.0.8] - 2026-02-15
+
+### Fixed
+- Stop hook now works on Windows (CMD, PowerShell) — replaced Bash one-liner with cross-platform `auto_save.py` Python wrapper
+
+### Changed
+- `hooks/hooks.json` command simplified to `python ~/.claude/skills/context-memory/scripts/auto_save.py`
+- `_hook_matches()` in `install.py` and `uninstall.py` now detects both old (`db_save.py`) and new (`auto_save.py`) hook formats
+- README: removed Windows shell warning, noted cross-platform hook support
+
+### Added
+- `skills/context-memory/scripts/auto_save.py` — cross-platform stop hook wrapper
+- `tests/test_auto_save.py` — tests for the new wrapper script
+
 ## [1.0.7] - 2026-02-15
 
 ### Fixed
