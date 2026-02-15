@@ -62,12 +62,12 @@ When the user runs `/remember`:
    - Solution descriptions
    - Important caveats or warnings
 
-5. **Write JSON and Save to Database**
+5. **Pipe JSON via Stdin and Save to Database**
 
-   Write a complete JSON file and save via `--json`. This is the **only** save path that preserves all fields:
+   Pipe JSON directly via `--json -` (stdin). This is the **only** save path that preserves all fields:
 
    ```bash
-   cat > /tmp/context_memory_session.json << 'ENDJSON'
+   python "~/.claude/skills/context-memory/scripts/db_save.py" --json - << 'ENDJSON'
    {
      "session_id": "<UNIQUE_ID>",
      "project_path": "<PROJECT_PATH>",
@@ -95,14 +95,13 @@ When the user runs `/remember`:
      "user_note": "User's note if provided, or null"
    }
    ENDJSON
-   python "~/.claude/skills/context-memory/scripts/db_save.py" --json /tmp/context_memory_session.json
    ```
 
    Generate the session_id with: `$(uuidgen 2>/dev/null || python -c "import uuid; print(uuid.uuid4())")`
 
    Set project_path to: `$(pwd)`
 
-   **Important**: Always use `--json`. The CLI args path (`--brief`, `--topics`) only saves a subset of fields and leaves `--detailed` recall empty.
+   **Important**: Always use `--json -` (stdin). This avoids temp file issues on Windows. The CLI args path (`--brief`, `--topics`) only saves a subset of fields and leaves `--detailed` recall empty.
 
 6. **Confirm to User**
 
@@ -132,7 +131,7 @@ You can find this session later with:
 
 ## Notes
 
-- Always use the `--json` path to save complete session data
+- Always use the `--json -` (stdin) path to save complete session data
 - Sessions are stored globally and can be searched across all projects
 - Use `--project` flag in `/recall` to limit to current project
 - If database doesn't exist, it will be created automatically

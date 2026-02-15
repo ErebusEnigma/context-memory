@@ -96,6 +96,24 @@ class TestDbExists:
         assert db_utils.db_exists() is True
 
 
+class TestNormalizeProjectPath:
+    def test_backslash_to_forward(self):
+        result = db_utils.normalize_project_path("C:\\Users\\dev\\project")
+        assert result == "C:/Users/dev/project"
+
+    def test_forward_slash_unchanged(self):
+        result = db_utils.normalize_project_path("/home/dev/project")
+        assert result == "/home/dev/project"
+
+    def test_mixed_slashes(self):
+        result = db_utils.normalize_project_path("C:\\Users/dev\\project/src")
+        assert result == "C:/Users/dev/project/src"
+
+    def test_empty_string(self):
+        result = db_utils.normalize_project_path("")
+        assert result == ""
+
+
 class TestValidTables:
     def test_valid_tables_defined(self):
         assert "sessions" in db_utils.VALID_TABLES

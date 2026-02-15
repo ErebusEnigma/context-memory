@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [1.0.7] - 2026-02-15
+
+### Fixed
+- Windows: backslash paths in `project_path` no longer cause `json.JSONDecodeError` (normalized to forward slashes)
+- Write tool pre-read requirement no longer blocks saves: `--json -` reads from stdin
+
+### Added
+- `--json -` reads JSON from stdin, eliminating temp file requirements
+- `normalize_project_path()` in `db_utils.py` for cross-platform path storage
+
+### Changed
+- SKILL.md and remember.md now use `--json -` heredoc pipe instead of temp files
+- `save_session()` normalizes `project_path` before storage
+
 ## [1.0.6] - 2026-02-13
 
 ### Added

@@ -1,5 +1,10 @@
 """Tests for session save logic."""
 
+import json
+import os
+import subprocess
+import sys
+
 import db_init
 import db_save
 import db_utils
@@ -194,3 +199,97 @@ class TestDeduplication:
             """, (sid, "Old session"))
             conn.commit()
         assert db_save.should_skip_auto_save("/tmp/myproject", window_minutes=5) is False
+
+
+class TestProjectPathNormalization:
+    def test_backslash_path_normalized_in_save_session(self, isolated_db):
+        """Backslash paths should be stored as forward slashes."""
+        db_init.init_database()
+        sid = db_save.save_session("norm-1", project_path="C:\\Users\\dev\\project")
+        with db_utils.get_connection(readonly=True) as conn:
+            row = conn.execute("SELECT project_path FROM sessions WHERE id = ?", (sid,)).fetchone()
+        assert row["project_path"] == "C:/Users/dev/project"
+
+    def test_forward_slash_path_unchanged(self, isolated_db):
+        """Forward-slash paths should remain unchanged."""
+        db_init.init_database()
+        sid = db_save.save_session("norm-2", project_path="/home/dev/project")
+        with db_utils.get_connection(readonly=True) as conn:
+            row = conn.execute("SELECT project_path FROM sessions WHERE id = ?", (sid,)).fetchone()
+        assert row["project_path"] == "/home/dev/project"
+
+    def test_backslash_path_normalized_in_save_full_session(self, isolated_db):
+        """save_full_session should also normalize backslash paths."""
+        db_init.init_database()
+        result = db_save.save_full_session(
+            session_id="norm-3",
+            project_path="C:\\Projects\\context-memory",
+            summary={"brief": "Test normalization"},
+        )
+        with db_utils.get_connection(readonly=True) as conn:
+            row = conn.execute(
+                "SELECT project_path FROM sessions WHERE id = ?", (result["session_id"],)
+            ).fetchone()
+        assert row["project_path"] == "C:/Projects/context-memory"
+
+
+class TestStdinJsonLoading:
+    """Test that --json - reads from stdin correctly."""
+
+    def _run_save(self, json_data, isolated_db):
+        """Helper to run db_save.py with JSON piped via stdin."""
+        scripts_dir = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "skills", "context-memory", "scripts",
+        )
+        env = os.environ.copy()
+        env["CONTEXT_MEMORY_DB_PATH"] = str(isolated_db)
+        result = subprocess.run(
+            [sys.executable, os.path.join(scripts_dir, "db_save.py"), "--json", "-"],
+            input=json_data,
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        return result
+
+    def test_stdin_save_succeeds(self, isolated_db):
+        payload = json.dumps({
+            "session_id": "stdin-test-1",
+            "summary": {"brief": "Saved via stdin"},
+        })
+        result = self._run_save(payload, isolated_db)
+        assert result.returncode == 0
+        # stdout may contain init messages before JSON; find the JSON object
+        stdout = result.stdout
+        json_start = stdout.index("{")
+        output = json.loads(stdout[json_start:])
+        assert "session_id" in output
+
+    def test_stdin_invalid_json_fails(self, isolated_db):
+        result = self._run_save("not valid json {{{", isolated_db)
+        assert result.returncode != 0
+        assert "Invalid JSON" in result.stdout or "Error" in result.stdout
+
+    def test_stdin_with_backslash_path(self, isolated_db):
+        """Verify that backslash paths in stdin JSON are normalized."""
+        payload = json.dumps({
+            "session_id": "stdin-test-2",
+            "project_path": "C:\\Users\\dev\\myproject",
+            "summary": {"brief": "Windows path test"},
+        })
+        result = self._run_save(payload, isolated_db)
+        assert result.returncode == 0
+        # Verify the path was normalized in the database
+        env_db_path = str(isolated_db)
+        os.environ["CONTEXT_MEMORY_DB_PATH"] = env_db_path
+        # Re-import to pick up env var - use direct sqlite3 instead
+        import sqlite3
+        conn = sqlite3.connect(env_db_path)
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            "SELECT project_path FROM sessions WHERE session_id = 'stdin-test-2'"
+        ).fetchone()
+        conn.close()
+        assert row is not None
+        assert row["project_path"] == "C:/Users/dev/myproject"

@@ -11,7 +11,7 @@ compatibility: "Requires Python >= 3.8 with sqlite3 FTS5 support (included in st
 allowed-tools: "Bash(python:*)"
 metadata:
   author: "ErebusEnigma"
-  version: "1.0.6"
+  version: "1.0.7"
 ---
 
 # Context Memory Skill
@@ -92,9 +92,9 @@ When the user wants to save/remember the current session:
 
 4. Select 5-15 key messages that capture the problem, decisions, and solutions
 
-5. Write a complete JSON file and save via `--json`:
+5. Pipe the JSON via stdin using `--json -`:
 ```bash
-cat > /tmp/context_memory_session.json << 'ENDJSON'
+python "~/.claude/skills/context-memory/scripts/db_save.py" --json - << 'ENDJSON'
 {
   "session_id": "<UNIQUE_ID>",
   "project_path": "<PROJECT_PATH>",
@@ -122,10 +122,9 @@ cat > /tmp/context_memory_session.json << 'ENDJSON'
   "user_note": "User's note or null"
 }
 ENDJSON
-python "~/.claude/skills/context-memory/scripts/db_save.py" --json /tmp/context_memory_session.json
 ```
 
-**Important**: Always use `--json` for /remember saves. The CLI args path (`--brief`, `--topics`) only saves a subset of fields and leaves `--detailed` recall empty.
+**Important**: Always use `--json -` (stdin) for /remember saves. This avoids temp file issues on Windows. The CLI args path (`--brief`, `--topics`) only saves a subset of fields and leaves `--detailed` recall empty.
 
 6. Report back: confirmation, brief summary, topics extracted, message/snippet counts, user note included.
 
