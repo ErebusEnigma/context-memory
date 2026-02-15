@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import platform
 import shutil
 import subprocess
 import sys
@@ -91,6 +92,14 @@ def _hook_matches(command: str) -> bool:
     return "context-memory" in command and ("db_save.py" in command or "auto_save.py" in command)
 
 
+def _platform_hook_command(command: str) -> str:
+    """Expand ~ in hook commands on Windows where cmd.exe won't."""
+    if platform.system() == "Windows" and "~/" in command:
+        home = str(Path.home()).replace("\\", "/")
+        command = command.replace("~/", home + "/")
+    return command
+
+
 def install_hooks() -> str:
     """Merge our stop hook into ~/.claude/settings.json."""
     if not HOOKS_SRC.exists():
@@ -105,6 +114,12 @@ def install_hooks() -> str:
     if not our_stop_matchers:
         return "Hooks: no Stop hooks defined in hooks.json, skipped"
 
+    # Apply platform-specific transformations (e.g., expand ~ on Windows)
+    for matcher_group in our_stop_matchers:
+        for hook in matcher_group.get("hooks", []):
+            if hook.get("type") == "command":
+                hook["command"] = _platform_hook_command(hook["command"])
+
     # Load existing settings
     settings = {}
     if SETTINGS_PATH.exists():
@@ -118,11 +133,19 @@ def install_hooks() -> str:
     stop_list = hooks.setdefault("Stop", [])
 
     # Check for existing context-memory hook
+    our_command = our_stop_matchers[0]["hooks"][0]["command"]
     for matcher_group in stop_list:
         inner_hooks = matcher_group.get("hooks", [])
         for hook in inner_hooks:
             if hook.get("type") == "command" and _hook_matches(hook.get("command", "")):
-                return "Hooks: already installed"
+                if hook["command"] == our_command:
+                    return "Hooks: already installed"
+                # Update outdated hook (e.g., ~ not expanded, old command format)
+                hook["command"] = our_command
+                with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
+                    json.dump(settings, f, indent=2)
+                    f.write("\n")
+                return "Hooks: updated stop hook in settings.json"
 
     # Append our matcher group(s)
     stop_list.extend(our_stop_matchers)

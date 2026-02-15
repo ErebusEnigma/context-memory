@@ -1,6 +1,6 @@
 {
   "name": "context-memory",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Persistent, searchable context storage across Claude Code sessions using SQLite + FTS5",
   "author": {
     "name": "ErebusEnigma"
