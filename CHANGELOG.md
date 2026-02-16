@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.1.0] - 2026-02-16
 
 ### Fixed
 - `db_init.py`: Recursive `sessions_updated` trigger — added `WHEN NEW.updated_at = OLD.updated_at` guard to prevent infinite recursion (schema migration v3)
@@ -11,7 +11,7 @@
 - `db_search.py`: N+1 query problem in `search_tier1` (per-result topic fetch) and `search_tier2` (per-session loop with 4 queries); replaced with batch `WHERE IN` queries
 - `auto_save.py`: Silent `except Exception: pass` replaced with `traceback.print_exc()` to stderr for debuggability
 - `tests/test_db_save.py`: Environment variable leak — `os.environ["CONTEXT_MEMORY_DB_PATH"]` set without cleanup; replaced with direct sqlite3 access
-- `__init__.py`: Version `1.0.6` out of sync with `1.0.9` elsewhere
+- `__init__.py`: Version `1.0.6` out of sync — updated to `1.1.0`
 
 ### Changed
 - `db_prune.py`: Removed redundant FTS index rebuild after pruning — FTS sync triggers already handle row-level deletes
