@@ -89,7 +89,8 @@ def install_commands() -> str:
 
 def _hook_matches(command: str) -> bool:
     """Check if a hook command string is ours (contains context-memory AND a known script)."""
-    return "context-memory" in command and ("db_save.py" in command or "auto_save.py" in command)
+    normalized = command.replace("\\", "/")
+    return "context-memory" in normalized and ("db_save.py" in normalized or "auto_save.py" in normalized)
 
 
 def _platform_hook_command(command: str) -> str:
@@ -180,7 +181,11 @@ UNINSTALL_DST = DB_DIR / "uninstall.py"
 
 
 def install_mcp() -> str:
-    """Register the MCP server with Claude Code (requires the `mcp` package)."""
+    """Register the MCP server with Claude Code (requires the `mcp` package).
+
+    Writes directly to ~/.claude/mcp_servers.json instead of shelling out to
+    ``claude mcp add``, which fails when already inside a Claude Code session.
+    """
     # Check if the mcp package is available
     try:
         subprocess.run(
@@ -197,23 +202,24 @@ def install_mcp() -> str:
         # Fall back to the source copy (e.g. --skip-skill was used)
         server_script = MCP_SERVER_SCRIPT
 
-    result = subprocess.run(
-        [
-            "claude", "mcp", "add",
-            "--transport", "stdio",
-            "--scope", "user",
-            "context-memory",
-            "--",
-            sys.executable, str(server_script),
-        ],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode == 0:
-        return "MCP server: registered with Claude Code"
-    # claude CLI not found or command failed
-    stderr = result.stderr.strip() or result.stdout.strip()
-    return f"MCP server: registration skipped — {stderr or 'claude CLI not available'}"
+    scripts_dir = server_script.parent
+
+    config_path = CLAUDE_DIR / "mcp_servers.json"
+    config: dict = {}
+    if config_path.exists():
+        try:
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return "MCP server: mcp_servers.json is malformed, skipped (fix manually)"
+
+    config["context-memory"] = {
+        "command": sys.executable,
+        "args": [str(server_script)],
+        "cwd": str(scripts_dir),
+    }
+
+    config_path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+    return "MCP server: registered in mcp_servers.json"
 
 
 def install_uninstaller() -> str:

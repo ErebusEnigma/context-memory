@@ -42,9 +42,10 @@ def uninstall_skill() -> str:
     return "Skill: not installed"
 
 
-def uninstall_commands() -> str:
+def uninstall_commands(force: bool = False) -> str:
     """Remove our command files from ~/.claude/commands/."""
     results = []
+    skipped = []
     for cmd_file in OUR_COMMAND_FILES:
         dst = COMMANDS_DST / cmd_file
         src = COMMANDS_SRC / cmd_file
@@ -53,12 +54,13 @@ def uninstall_commands() -> str:
             results.append(f"  {cmd_file}: not installed")
             continue
 
-        # Ownership check: only skip if source exists AND content differs
-        if src.exists():
+        # Ownership check: only skip if source exists AND content differs (unless --force)
+        if not force and src.exists():
             src_content = src.read_text(encoding="utf-8")
             dst_content = dst.read_text(encoding="utf-8")
             if dst_content != src_content:
-                results.append(f"  {cmd_file}: modified by user, skipped")
+                results.append(f"  {cmd_file}: modified by user, skipped (use --force to remove)")
+                skipped.append(str(dst))
                 continue
 
         dst.unlink()
@@ -71,12 +73,16 @@ def uninstall_commands() -> str:
         else:
             results.append(f"  {cmd_file}: removed")
 
-    return "Commands:\n" + "\n".join(results)
+    msg = "Commands:\n" + "\n".join(results)
+    if skipped:
+        msg += "\n  Warning: orphan files remain: " + ", ".join(skipped)
+    return msg
 
 
 def _hook_matches(command: str) -> bool:
     """Check if a hook command string is ours."""
-    return "context-memory" in command and ("db_save.py" in command or "auto_save.py" in command)
+    normalized = command.replace("\\", "/")
+    return "context-memory" in normalized and ("db_save.py" in normalized or "auto_save.py" in normalized)
 
 
 def uninstall_hooks() -> str:
@@ -129,6 +135,32 @@ def uninstall_hooks() -> str:
     return "Hooks: removed from settings.json"
 
 
+MCP_CONFIG_PATH = CLAUDE_DIR / "mcp_servers.json"
+
+
+def uninstall_mcp() -> str:
+    """Remove the context-memory entry from ~/.claude/mcp_servers.json."""
+    if not MCP_CONFIG_PATH.exists():
+        return "MCP server: mcp_servers.json not found"
+
+    try:
+        config = json.loads(MCP_CONFIG_PATH.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return "MCP server: mcp_servers.json is malformed, skipped"
+
+    if "context-memory" not in config:
+        return "MCP server: not registered"
+
+    del config["context-memory"]
+
+    if config:
+        MCP_CONFIG_PATH.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+    else:
+        MCP_CONFIG_PATH.unlink()
+
+    return "MCP server: removed from mcp_servers.json"
+
+
 def uninstall_data(remove: bool = False) -> str:
     """Handle database removal."""
     if not DB_DIR.exists():
@@ -143,6 +175,7 @@ def uninstall_data(remove: bool = False) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Uninstall context-memory plugin from Claude Code")
+    parser.add_argument("--force", action="store_true", help="Remove modified command files without ownership check")
     data_group = parser.add_mutually_exclusive_group()
     data_group.add_argument("--keep-data", action="store_true", help="Keep database (skip prompt)")
     data_group.add_argument("--remove-data", action="store_true", help="Delete database without prompting")
@@ -153,8 +186,9 @@ def main() -> None:
 
     results = [
         uninstall_skill(),
-        uninstall_commands(),
+        uninstall_commands(force=args.force),
         uninstall_hooks(),
+        uninstall_mcp(),
     ]
 
     # Handle database

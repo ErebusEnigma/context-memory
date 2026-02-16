@@ -8,6 +8,16 @@
 - `install.py`: `install_mcp()` function and `--skip-mcp` flag for automatic MCP server registration
 - `pyproject.toml`: optional `[project.optional-dependencies] mcp` group
 - `tests/test_mcp_server.py`: tests for all MCP tool functions and server registration (skipped when `mcp` not installed)
+- `uninstall.py`: `--force` flag to remove modified command files without ownership check
+- `uninstall.py`: `uninstall_mcp()` removes `context-memory` entry from `~/.claude/mcp_servers.json`
+- `tests/test_uninstall.py`: tests for `_hook_matches()` normalization, `--force` commands, `uninstall_mcp()`
+
+### Fixed
+- `_hook_matches()` in `install.py` and `uninstall.py` now normalizes backslashes to forward slashes, fixing orphan hook detection on Windows
+- `mcp_server.py` adds its own directory to `sys.path` so sibling imports (`db_init`, `db_save`, `db_search`) work regardless of working directory
+- `install_mcp()` writes directly to `~/.claude/mcp_servers.json` instead of shelling out to `claude mcp add`, which fails inside a Claude Code session
+- `.mcp.json` now includes `cwd` field for local dev robustness
+- `uninstall_commands()` now warns about orphan files when skipping modified commands (with `--force` override)
 
 ### Changed
 - `auto_save.py`: Reads Claude Code's stdin JSON payload (`session_id`, `transcript_path`, `stop_hook_active`, `cwd`) instead of generating synthetic IDs

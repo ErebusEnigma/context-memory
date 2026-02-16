@@ -3,7 +3,8 @@
     "context-memory": {
       "type": "stdio",
       "command": "python",
-      "args": ["skills/context-memory/scripts/mcp_server.py"]
+      "args": ["skills/context-memory/scripts/mcp_server.py"],
+      "cwd": "skills/context-memory/scripts"
     }
   }
 }

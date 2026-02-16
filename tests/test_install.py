@@ -1,6 +1,7 @@
-"""Tests for install.py hook logic."""
+"""Tests for install.py hook and MCP logic."""
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -60,6 +61,16 @@ class TestHookMatches:
         cmd = "python ~/.claude/skills/other-plugin/scripts/save.py"
         assert install._hook_matches(cmd) is False
 
+    def test_matches_backslash_paths(self):
+        """Backslash paths (Windows) should still match after normalization."""
+        cmd = "python C:\\Users\\TestUser\\.claude\\skills\\context-memory\\scripts\\auto_save.py"
+        assert install._hook_matches(cmd) is True
+
+    def test_matches_mixed_slash_paths(self):
+        """Mixed forward/backslash paths should still match."""
+        cmd = "python C:\\Users\\TestUser/.claude/skills\\context-memory/scripts\\db_save.py"
+        assert install._hook_matches(cmd) is True
+
 
 class TestInstallHooksUpgrade:
     def _write_settings(self, settings_path, hook_command):
@@ -117,3 +128,56 @@ class TestInstallHooksUpgrade:
         actual_cmd = settings["hooks"]["Stop"][0]["hooks"][0]["command"]
         assert "~" not in actual_cmd
         assert "C:/Users/TestUser/.claude" in actual_cmd
+
+
+class TestInstallMcp:
+    def test_writes_mcp_servers_json(self, tmp_path):
+        """install_mcp() should write directly to mcp_servers.json."""
+        claude_dir = tmp_path / ".claude"
+        claude_dir.mkdir()
+        config_path = claude_dir / "mcp_servers.json"
+        # Create a fake server script so the path resolves
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        server_script = scripts_dir / "mcp_server.py"
+        server_script.write_text("# fake", encoding="utf-8")
+
+        with patch.object(install, "CLAUDE_DIR", claude_dir), \
+             patch.object(install, "SKILL_DST", tmp_path), \
+             patch.object(install, "MCP_SERVER_SCRIPT", server_script), \
+             patch("subprocess.run"):  # mcp import check
+            result = install.install_mcp()
+
+        assert result == "MCP server: registered in mcp_servers.json"
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        assert "context-memory" in config
+        assert config["context-memory"]["command"] == sys.executable
+        assert "cwd" in config["context-memory"]
+
+    def test_preserves_existing_entries(self, tmp_path):
+        """install_mcp() should not overwrite other MCP server entries."""
+        claude_dir = tmp_path / ".claude"
+        claude_dir.mkdir()
+        config_path = claude_dir / "mcp_servers.json"
+        config_path.write_text(json.dumps({"other-server": {"command": "node"}}), encoding="utf-8")
+        server_script = tmp_path / "scripts" / "mcp_server.py"
+        server_script.parent.mkdir()
+        server_script.write_text("# fake", encoding="utf-8")
+
+        with patch.object(install, "CLAUDE_DIR", claude_dir), \
+             patch.object(install, "SKILL_DST", tmp_path), \
+             patch.object(install, "MCP_SERVER_SCRIPT", server_script), \
+             patch("subprocess.run"):
+            install.install_mcp()
+
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        assert "other-server" in config
+        assert "context-memory" in config
+
+    def test_skips_when_mcp_not_installed(self, tmp_path):
+        """install_mcp() should skip gracefully when mcp package is missing."""
+        with patch.object(install, "CLAUDE_DIR", tmp_path), \
+             patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "python")):
+            result = install.install_mcp()
+
+        assert "not installed" in result
