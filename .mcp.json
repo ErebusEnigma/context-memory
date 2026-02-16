@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "context-memory": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["skills/context-memory/scripts/mcp_server.py"]
+    }
+  }
+}

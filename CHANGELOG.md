@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+- MCP server (`mcp_server.py`) exposing `context_search`, `context_save`, `context_stats`, and `context_init` tools via stdio transport using FastMCP
+- `.mcp.json` project-level MCP server configuration
+- `install.py`: `install_mcp()` function and `--skip-mcp` flag for automatic MCP server registration
+- `pyproject.toml`: optional `[project.optional-dependencies] mcp` group
+- `tests/test_mcp_server.py`: tests for all MCP tool functions and server registration (skipped when `mcp` not installed)
+
 ### Changed
 - `auto_save.py`: Reads Claude Code's stdin JSON payload (`session_id`, `transcript_path`, `stop_hook_active`, `cwd`) instead of generating synthetic IDs
 - `auto_save.py`: Parses JSONL transcript to extract real user/assistant messages (head+tail sampling when >15 messages)
