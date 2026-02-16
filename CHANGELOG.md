@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+### Fixed
+- `db_init.py`: Recursive `sessions_updated` trigger — added `WHEN NEW.updated_at = OLD.updated_at` guard to prevent infinite recursion (schema migration v3)
+- `db_save.py`: `save_topics()` returned `len(topics)` instead of counting actually inserted topics (blank entries were skipped but still counted)
+- `db_save.py`: `save_messages()` set `message_count` to batch size instead of total rows when appending (`replace=False`)
+- `db_save.py`: Missing `encoding='utf-8'` on `open()` for `--json` file path
+- `db_init.py`: `verify_schema()` crashed with `OperationalError` when database file didn't exist; now returns a descriptive dict
+- `db_search.py`: N+1 query problem in `search_tier1` (per-result topic fetch) and `search_tier2` (per-session loop with 4 queries); replaced with batch `WHERE IN` queries
+- `auto_save.py`: Silent `except Exception: pass` replaced with `traceback.print_exc()` to stderr for debuggability
+- `tests/test_db_save.py`: Environment variable leak — `os.environ["CONTEXT_MEMORY_DB_PATH"]` set without cleanup; replaced with direct sqlite3 access
+- `__init__.py`: Version `1.0.6` out of sync with `1.0.9` elsewhere
+
+### Changed
+- `db_prune.py`: Removed redundant FTS index rebuild after pruning — FTS sync triggers already handle row-level deletes
+- `db_utils.py`: Removed dead `escape_fts_query()` function (unused; `format_fts_query()` is used instead)
+- `db_init.py`: `get_stats()` now validates table names against `VALID_TABLES` before use in SQL
+- `.github/workflows/ci.yml`: Added `mcp` to CI dependencies so MCP tests run instead of being silently skipped
+
 ### Added
 - MCP server (`mcp_server.py`) exposing `context_search`, `context_save`, `context_stats`, and `context_init` tools via stdio transport using FastMCP
 - `.mcp.json` project-level MCP server configuration

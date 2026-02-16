@@ -86,26 +86,6 @@ def normalize_project_path(project_path: str) -> str:
     return project_path.replace('\\', '/')
 
 
-def escape_fts_query(query: str) -> str:
-    """
-    Escape special characters in FTS5 queries.
-    FTS5 special characters: " ( ) * : ^
-    """
-    # Remove or escape special FTS5 characters
-    special_chars = ['"', '(', ')', '*', ':', '^']
-    escaped = query
-    for char in special_chars:
-        escaped = escaped.replace(char, ' ')
-
-    # Split into terms and wrap each in quotes for exact matching
-    terms = escaped.split()
-    if not terms:
-        return '""'
-
-    # Join terms with OR for broader matching
-    return ' OR '.join(f'"{term}"' for term in terms if term)
-
-
 def format_fts_query(query: str, use_prefix: bool = True) -> str:
     """
     Format a query string for FTS5 search.

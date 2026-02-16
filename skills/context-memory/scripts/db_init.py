@@ -8,12 +8,12 @@ import os
 import sys
 
 try:
-    from .db_utils import DB_PATH, STATS_TABLES, db_exists, ensure_db_dir, get_connection
+    from .db_utils import DB_PATH, STATS_TABLES, VALID_TABLES, db_exists, ensure_db_dir, get_connection
 except ImportError:
-    from db_utils import DB_PATH, STATS_TABLES, db_exists, ensure_db_dir, get_connection
+    from db_utils import DB_PATH, STATS_TABLES, VALID_TABLES, db_exists, ensure_db_dir, get_connection
 
 # Schema versioning
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
 
 SCHEMA_SQL = """
 -- Core Tables
@@ -194,8 +194,10 @@ CREATE TRIGGER IF NOT EXISTS code_snippets_au AFTER UPDATE ON code_snippets BEGI
     VALUES (NEW.id, NEW.code, NEW.description, NEW.file_path);
 END;
 
--- Sessions updated_at trigger
-CREATE TRIGGER IF NOT EXISTS sessions_updated AFTER UPDATE ON sessions BEGIN
+-- Sessions updated_at trigger (WHEN guard prevents recursive firing)
+CREATE TRIGGER IF NOT EXISTS sessions_updated AFTER UPDATE ON sessions
+WHEN NEW.updated_at = OLD.updated_at
+BEGIN
     UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
@@ -233,9 +235,23 @@ def _migrate_v1_to_v2(conn) -> None:
     conn.execute("INSERT INTO schema_version (version) VALUES (2)")
 
 
+def _migrate_v2_to_v3(conn) -> None:
+    """Migrate from v2 to v3: replace sessions_updated trigger with WHEN-guarded version."""
+    conn.execute("DROP TRIGGER IF EXISTS sessions_updated")
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS sessions_updated AFTER UPDATE ON sessions
+        WHEN NEW.updated_at = OLD.updated_at
+        BEGIN
+            UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+        END
+    """)
+    conn.execute("INSERT INTO schema_version (version) VALUES (3)")
+
+
 # Migration registry: version -> migration function
 MIGRATIONS = {
     2: _migrate_v1_to_v2,
+    3: _migrate_v2_to_v3,
 }
 
 
@@ -311,6 +327,14 @@ def verify_schema() -> dict:
         'schema_version',
     ]
 
+    if not db_exists():
+        return {
+            'valid': False,
+            'existing': [],
+            'missing': expected_tables[:],
+            'error': 'database not found',
+        }
+
     with get_connection(readonly=True) as conn:
         cursor = conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' OR type='virtual table'"
@@ -335,6 +359,8 @@ def get_stats() -> dict:
         stats = {}
 
         for table in STATS_TABLES:
+            if table not in VALID_TABLES:
+                continue  # safety: STATS_TABLES is derived from VALID_TABLES
             cursor = conn.execute(f"SELECT COUNT(*) FROM {table}")
             stats[table] = cursor.fetchone()[0]
 

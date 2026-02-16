@@ -99,10 +99,6 @@ def prune_sessions(
             ids_list
         )
 
-        # Rebuild FTS indexes to ensure consistency after bulk deletes
-        for fts_table in ['summaries_fts', 'messages_fts', 'topics_fts', 'code_snippets_fts']:
-            conn.execute(f"INSERT INTO {fts_table}({fts_table}) VALUES('rebuild')")
-
         conn.commit()
 
         return {"pruned": len(ids_list), "dry_run": False}

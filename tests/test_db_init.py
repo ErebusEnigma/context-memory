@@ -2,7 +2,6 @@
 
 import db_init
 import db_utils
-import pytest
 
 
 class TestInitDatabase:
@@ -50,12 +49,14 @@ class TestInitDatabase:
         stats = db_init.get_stats()
         assert stats == {}
 
-    def test_verify_schema_no_db_raises(self, isolated_db):
-        """verify_schema() requires the DB to exist; callers should check db_exists() first."""
-        import sqlite3
+    def test_verify_schema_no_db_returns_invalid(self, isolated_db):
+        """verify_schema() returns a clear result when the DB doesn't exist."""
         assert not isolated_db.exists()
-        with pytest.raises(sqlite3.OperationalError):
-            db_init.verify_schema()
+        result = db_init.verify_schema()
+        assert result['valid'] is False
+        assert result['error'] == 'database not found'
+        assert result['existing'] == []
+        assert len(result['missing']) > 0
 
 
 class TestSchemaVersioning:
@@ -70,7 +71,7 @@ class TestSchemaVersioning:
         with db_utils.get_connection(readonly=True) as conn:
             cursor = conn.execute("SELECT version FROM schema_version ORDER BY version DESC LIMIT 1")
             row = cursor.fetchone()
-        assert row[0] == 2
+        assert row[0] == 3
 
     def test_legacy_db_returns_version_1(self, isolated_db):
         """A DB without schema_version table is implicitly version 1."""

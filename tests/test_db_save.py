@@ -280,12 +280,9 @@ class TestStdinJsonLoading:
         })
         result = self._run_save(payload, isolated_db)
         assert result.returncode == 0
-        # Verify the path was normalized in the database
-        env_db_path = str(isolated_db)
-        os.environ["CONTEXT_MEMORY_DB_PATH"] = env_db_path
-        # Re-import to pick up env var - use direct sqlite3 instead
+        # Verify the path was normalized in the database (use direct sqlite3)
         import sqlite3
-        conn = sqlite3.connect(env_db_path)
+        conn = sqlite3.connect(str(isolated_db))
         conn.row_factory = sqlite3.Row
         row = conn.execute(
             "SELECT project_path FROM sessions WHERE session_id = 'stdin-test-2'"
