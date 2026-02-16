@@ -106,10 +106,12 @@ def save_messages(
                 VALUES (?, ?, ?, ?)
             """, (session_db_id, msg.get('role', 'user'), msg.get('content', ''), i))
 
-        # Update message count
-        conn.execute("""
-            UPDATE sessions SET message_count = ? WHERE id = ?
-        """, (len(messages), session_db_id))
+        # Update message count from actual rows (correct even on append)
+        cursor = conn.execute(
+            "SELECT COUNT(*) FROM messages WHERE session_id = ?", (session_db_id,)
+        )
+        total = cursor.fetchone()[0]
+        conn.execute("UPDATE sessions SET message_count = ? WHERE id = ?", (total, session_db_id))
 
         conn.commit()
 
@@ -198,16 +200,18 @@ def save_topics(session_db_id: int, topics: list[str], replace: bool = True) -> 
         if replace:
             conn.execute("DELETE FROM topics WHERE session_id = ?", (session_db_id,))
 
+        count = 0
         for topic in topics:
             topic_lower = topic.lower().strip()
             if topic_lower:
                 conn.execute("""
                     INSERT INTO topics (session_id, topic) VALUES (?, ?)
                 """, (session_db_id, topic_lower))
+                count += 1
 
         conn.commit()
 
-    return len(topics)
+    return count
 
 
 def save_code_snippet(
@@ -367,7 +371,7 @@ if __name__ == "__main__":
             if args.json == '-':
                 data = json.load(sys.stdin)
             else:
-                with open(args.json, 'r') as f:
+                with open(args.json, 'r', encoding='utf-8') as f:
                     data = json.load(f)
         except FileNotFoundError:
             print(f"Error: File not found: {args.json}")

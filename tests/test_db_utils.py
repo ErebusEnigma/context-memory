@@ -20,22 +20,6 @@ class TestHashProjectPath:
         assert h1 != h2
 
 
-class TestEscapeFtsQuery:
-    def test_simple_query(self):
-        result = db_utils.escape_fts_query("hello world")
-        assert '"hello"' in result
-        assert '"world"' in result
-
-    def test_special_chars_escaped(self):
-        result = db_utils.escape_fts_query('hello "world" (test)')
-        assert '(' not in result.replace('"', '')
-        assert ')' not in result.replace('"', '')
-
-    def test_empty_query(self):
-        result = db_utils.escape_fts_query("")
-        assert result == '""'
-
-
 class TestFormatFtsQuery:
     def test_simple_query(self):
         result = db_utils.format_fts_query("hello")

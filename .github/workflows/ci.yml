@@ -39,7 +39,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: pip install pytest
+        run: |
+          pip install pytest
+          pip install mcp || true  # mcp requires Python >=3.10; skip on older versions
 
       - name: Run tests
         run: python -m pytest tests/ -v

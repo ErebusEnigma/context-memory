@@ -149,13 +149,21 @@ def search_tier1(
         for result in summary_results + topic_results + snippet_results:
             if result['id'] not in seen_ids:
                 seen_ids.add(result['id'])
-                # Get topics for this session
-                cursor = conn.execute(
-                    "SELECT topic FROM topics WHERE session_id = ?",
-                    (result['id'],)
-                )
-                result['topics'] = [row['topic'] for row in cursor.fetchall()]
                 merged.append(result)
+
+        # Batch-fetch topics for all merged results
+        merged_ids = [r['id'] for r in merged]
+        if merged_ids:
+            placeholders = ','.join('?' * len(merged_ids))
+            cursor = conn.execute(
+                f"SELECT session_id, topic FROM topics WHERE session_id IN ({placeholders})",
+                merged_ids,
+            )
+            topics_map = {}
+            for row in cursor.fetchall():
+                topics_map.setdefault(row['session_id'], []).append(row['topic'])
+            for result in merged:
+                result['topics'] = topics_map.get(result['id'], [])
 
         # Sort by relevance and limit
         merged.sort(key=lambda x: x.get('relevance', 0))
@@ -184,61 +192,69 @@ def search_tier2(
         return []
 
     with get_connection(readonly=True) as conn:
-        results = []
+        placeholders = ','.join('?' * len(session_ids))
 
-        for sid in session_ids:
-            # Get session info
-            cursor = conn.execute("""
-                SELECT s.*, sum.brief, sum.detailed, sum.key_decisions,
-                       sum.problems_solved, sum.technologies, sum.outcome, sum.user_note
-                FROM sessions s
-                LEFT JOIN summaries sum ON sum.session_id = s.id
-                WHERE s.id = ?
-            """, (sid,))
-            row = cursor.fetchone()
-
-            if not row:
-                continue
-
+        # Batch-fetch sessions + summaries
+        cursor = conn.execute(f"""
+            SELECT s.*, sum.brief, sum.detailed, sum.key_decisions,
+                   sum.problems_solved, sum.technologies, sum.outcome, sum.user_note
+            FROM sessions s
+            LEFT JOIN summaries sum ON sum.session_id = s.id
+            WHERE s.id IN ({placeholders})
+        """, session_ids)
+        sessions_map = {}
+        for row in cursor.fetchall():
             session = dict(row)
-
-            # Parse JSON fields
             for field in ['key_decisions', 'problems_solved', 'technologies']:
                 if session.get(field):
                     try:
                         session[field] = json.loads(session[field])
                     except (json.JSONDecodeError, ValueError):
-                        logger.warning("Failed to parse JSON in field '%s' for session %d", field, sid)
-
-            # Get topics
-            cursor = conn.execute(
-                "SELECT topic FROM topics WHERE session_id = ?",
-                (sid,)
-            )
-            session['topics'] = [r['topic'] for r in cursor.fetchall()]
-
-            # Get messages if requested
+                        logger.warning("Failed to parse JSON in field '%s' for session %d", field, session['id'])
+            session['topics'] = []
             if include_messages:
-                cursor = conn.execute("""
-                    SELECT role, content, sequence
-                    FROM messages
-                    WHERE session_id = ?
-                    ORDER BY sequence
-                """, (sid,))
-                session['messages'] = [dict(r) for r in cursor.fetchall()]
-
-            # Get code snippets if requested
+                session['messages'] = []
             if include_snippets:
-                cursor = conn.execute("""
-                    SELECT language, code, description, file_path
-                    FROM code_snippets
-                    WHERE session_id = ?
-                """, (sid,))
-                session['code_snippets'] = [dict(r) for r in cursor.fetchall()]
+                session['code_snippets'] = []
+            sessions_map[session['id']] = session
 
-            results.append(session)
+        if not sessions_map:
+            return []
 
-        return results
+        # Batch-fetch topics
+        cursor = conn.execute(
+            f"SELECT session_id, topic FROM topics WHERE session_id IN ({placeholders})",
+            session_ids,
+        )
+        for row in cursor.fetchall():
+            if row['session_id'] in sessions_map:
+                sessions_map[row['session_id']]['topics'].append(row['topic'])
+
+        # Batch-fetch messages if requested
+        if include_messages:
+            cursor = conn.execute(f"""
+                SELECT session_id, role, content, sequence
+                FROM messages
+                WHERE session_id IN ({placeholders})
+                ORDER BY session_id, sequence
+            """, session_ids)
+            for row in cursor.fetchall():
+                if row['session_id'] in sessions_map:
+                    sessions_map[row['session_id']]['messages'].append(dict(row))
+
+        # Batch-fetch code snippets if requested
+        if include_snippets:
+            cursor = conn.execute(f"""
+                SELECT session_id, language, code, description, file_path
+                FROM code_snippets
+                WHERE session_id IN ({placeholders})
+            """, session_ids)
+            for row in cursor.fetchall():
+                if row['session_id'] in sessions_map:
+                    sessions_map[row['session_id']]['code_snippets'].append(dict(row))
+
+        # Return in the original order
+        return [sessions_map[sid] for sid in session_ids if sid in sessions_map]
 
 
 def search_messages(
