@@ -109,7 +109,9 @@ def context_save(
         topics: List of topic/tag strings.
         code_snippets: List of dicts with code, language, description, file_path.
         user_note: Optional user annotation.
-        metadata: Additional metadata dict.
+        metadata: Additional metadata dict. Stored as-is on the session row.
+            Note: the auto-save hook (--auto --json) injects {"auto_save": true}
+            into metadata via a separate code path; MCP saves do not.
 
     Returns:
         Dict with saved database IDs (session_id, summary_id, etc.).
