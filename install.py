@@ -173,8 +173,47 @@ def install_db() -> str:
     return f"Database: init failed — {result.stderr.strip() or result.stdout.strip()}"
 
 
+MCP_SERVER_SCRIPT = PLUGIN_ROOT / "skills" / "context-memory" / "scripts" / "mcp_server.py"
+
 UNINSTALL_SRC = PLUGIN_ROOT / "uninstall.py"
 UNINSTALL_DST = DB_DIR / "uninstall.py"
+
+
+def install_mcp() -> str:
+    """Register the MCP server with Claude Code (requires the `mcp` package)."""
+    # Check if the mcp package is available
+    try:
+        subprocess.run(
+            [sys.executable, "-c", "import mcp"],
+            capture_output=True,
+            check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return "MCP server: 'mcp' package not installed, skipped (pip install mcp)"
+
+    # Resolve the absolute path to the server script (use the installed copy)
+    server_script = SKILL_DST / "scripts" / "mcp_server.py"
+    if not server_script.exists():
+        # Fall back to the source copy (e.g. --skip-skill was used)
+        server_script = MCP_SERVER_SCRIPT
+
+    result = subprocess.run(
+        [
+            "claude", "mcp", "add",
+            "--transport", "stdio",
+            "--scope", "user",
+            "context-memory",
+            "--",
+            sys.executable, str(server_script),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        return "MCP server: registered with Claude Code"
+    # claude CLI not found or command failed
+    stderr = result.stderr.strip() or result.stdout.strip()
+    return f"MCP server: registration skipped — {stderr or 'claude CLI not available'}"
 
 
 def install_uninstaller() -> str:
@@ -193,6 +232,7 @@ def main() -> None:
     parser.add_argument("--skip-commands", action="store_true", help="Skip command installation")
     parser.add_argument("--skip-hooks", action="store_true", help="Skip hook installation")
     parser.add_argument("--skip-db", action="store_true", help="Skip database initialization")
+    parser.add_argument("--skip-mcp", action="store_true", help="Skip MCP server registration")
 
     args = parser.parse_args()
 
@@ -211,6 +251,9 @@ def main() -> None:
 
     if not args.skip_db:
         results.append(install_db())
+
+    if not args.skip_mcp:
+        results.append(install_mcp())
 
     results.append(install_uninstaller())
 

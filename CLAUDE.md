@@ -8,6 +8,7 @@ A Claude Code plugin that provides persistent, searchable context storage across
 
 ```
 .claude-plugin/plugin.json   # Plugin manifest (version, metadata)
+.mcp.json                    # MCP server config (project-level)
 skills/context-memory/        # Skill definition (SKILL.md)
   scripts/
     db_init.py               # Schema creation, verification, stats, migrations
@@ -15,6 +16,7 @@ skills/context-memory/        # Skill definition (SKILL.md)
     db_search.py             # FTS5 search (tier 1 + tier 2)
     db_prune.py              # Database pruning (by age/count)
     db_utils.py              # Connection management, helpers, VALID_TABLES
+    mcp_server.py            # MCP server (FastMCP, stdio transport)
 commands/                     # /remember and /recall command definitions
 hooks/                        # Auto-save stop hook (with dedup)
 ```

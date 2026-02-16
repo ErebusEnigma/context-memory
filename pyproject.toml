@@ -10,6 +10,9 @@ authors = [
 ]
 keywords = ["memory", "context", "sqlite", "fts5", "claude-code", "sessions"]
 
+[project.optional-dependencies]
+mcp = ["mcp>=1.0.0"]
+
 [project.urls]
 Homepage = "https://github.com/ErebusEnigma/context-memory"
 Repository = "https://github.com/ErebusEnigma/context-memory"
