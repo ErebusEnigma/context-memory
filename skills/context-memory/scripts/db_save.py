@@ -278,7 +278,8 @@ def save_full_session(
     summary: Optional[dict] = None,
     topics: Optional[list[str]] = None,
     code_snippets: Optional[list[dict]] = None,
-    user_note: Optional[str] = None
+    user_note: Optional[str] = None,
+    metadata: Optional[dict] = None
 ) -> dict:
     """
     Save a complete session with all related data.
@@ -291,12 +292,13 @@ def save_full_session(
         topics: List of topic strings
         code_snippets: List of code snippet dicts
         user_note: User-provided annotation
+        metadata: Additional metadata dict
 
     Returns:
         Dict with saved IDs
     """
     # Save session
-    session_db_id = save_session(session_id, project_path)
+    session_db_id = save_session(session_id, project_path, metadata=metadata)
 
     result = {'session_id': session_db_id}
 
@@ -374,6 +376,13 @@ if __name__ == "__main__":
             source = "stdin" if args.json == '-' else args.json
             print(f"Error: Invalid JSON in {source}: {e}")
             sys.exit(1)
+
+        # Inject auto_save metadata when --auto is combined with --json
+        if args.auto:
+            existing_meta = data.get("metadata") or {}
+            existing_meta["auto_save"] = True
+            data["metadata"] = existing_meta
+
         result = save_full_session(**data)
     else:
         # Save from arguments

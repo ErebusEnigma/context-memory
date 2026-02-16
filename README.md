@@ -140,7 +140,7 @@ Porter stemming is enabled, so "running" matches "run" and "authentication" matc
 
 ### Auto-Save Hook
 
-The plugin includes an optional Stop hook that auto-saves a basic session record when Claude Code exits. This pairs with `/remember` for richer, annotated saves.
+The plugin includes a Stop hook that automatically saves session context when Claude Code exits. The hook reads the JSON payload from Claude Code's stdin (session ID, transcript path) and parses the JSONL transcript to extract real conversation messages. This produces rich, searchable sessions — not just placeholder records. When no transcript is available, it falls back to a minimal save with a synthetic ID. The hook also respects `stop_hook_active` to prevent loops and deduplicates against recent `/remember` saves.
 
 ## Usage Examples
 

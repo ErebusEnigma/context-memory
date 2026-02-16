@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Changed
+- `auto_save.py`: Reads Claude Code's stdin JSON payload (`session_id`, `transcript_path`, `stop_hook_active`, `cwd`) instead of generating synthetic IDs
+- `auto_save.py`: Parses JSONL transcript to extract real user/assistant messages (head+tail sampling when >15 messages)
+- `auto_save.py`: Brief now uses first user message text instead of generic project name
+- `auto_save.py`: Rich path pipes full JSON to `db_save.py --auto --json -`; fallback path preserves old CLI-args behaviour
+- `hooks/hooks.json`: Added `"timeout": 120` to Stop hook (was using default 600s)
+- `db_save.py`: `save_full_session()` accepts `metadata` parameter, passed through to `save_session()`
+- `db_save.py`: `--auto` + `--json` combined now injects `{"auto_save": true}` into payload metadata
+
+### Added
+- `auto_save.py`: `read_hook_input()`, `extract_text_content()`, `parse_transcript()`, `build_brief()` functions
+- `auto_save.py`: Loop prevention via `stop_hook_active` flag from hook input
+- `tests/test_auto_save.py`: 16 unit tests for new functions (`extract_text_content`, `parse_transcript`, `build_brief`)
+- `tests/test_auto_save.py`: 6 new integration tests (real session ID from stdin, stop_hook_active prevention, transcript message saving, brief from first user message, fallback on missing transcript, empty stdin backward compat)
+
 ## [1.0.9] - 2026-02-15
 
 ### Fixed
