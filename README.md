@@ -77,7 +77,7 @@ python install.py --symlink
 python ~/.claude/context-memory/uninstall.py
 ```
 
-This removes the skill, commands, and stop hook. Your saved sessions are preserved by default. Use `--remove-data` to also delete the database, or `--keep-data` to skip the prompt.
+This removes the skill, commands, hooks, and MCP server registration. Your saved sessions are preserved by default. Use `--remove-data` to also delete the database, or `--keep-data` to skip the prompt. Use `--force` to remove command files even if they've been modified.
 
 ## Requirements
 
@@ -157,8 +157,18 @@ An optional MCP (Model Context Protocol) server exposes context-memory operation
 ```bash
 pip install mcp                    # Install the optional dependency
 python install.py                  # Registers the MCP server automatically
-# Or register manually:
-claude mcp add --transport stdio --scope user context-memory -- python ~/.claude/skills/context-memory/scripts/mcp_server.py
+```
+
+To register manually (outside a Claude Code session), add an entry to `~/.claude/mcp_servers.json`:
+
+```json
+{
+  "context-memory": {
+    "command": "python",
+    "args": ["/full/path/to/.claude/skills/context-memory/scripts/mcp_server.py"],
+    "cwd": "/full/path/to/.claude/skills/context-memory/scripts"
+  }
+}
 ```
 
 The MCP server uses stdio transport and imports the existing Python modules directly (no subprocess calls). The `mcp` package is an optional dependency — the core plugin remains zero-dependency Python 3.8+. A project-level `.mcp.json` is also included for local development.
