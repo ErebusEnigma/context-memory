@@ -5,7 +5,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python ~/.claude/skills/context-memory/scripts/auto_save.py"
+            "command": "python ~/.claude/skills/context-memory/scripts/auto_save.py",
+            "timeout": 120
           }
         ]
       }
