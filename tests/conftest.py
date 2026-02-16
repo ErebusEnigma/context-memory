@@ -35,6 +35,6 @@ def isolated_db(tmp_path, monkeypatch):
     try:
         import mcp_server  # noqa: F811
         monkeypatch.setattr(mcp_server, "DB_PATH", db_path, raising=False)
-    except ImportError:
+    except (ImportError, SystemExit):
         pass
     yield db_path

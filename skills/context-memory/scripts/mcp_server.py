@@ -16,12 +16,17 @@ import sys
 try:
     from mcp.server.fastmcp import FastMCP
 except ImportError:
-    print(
-        "Error: the 'mcp' package is required for the MCP server.\n"
-        "Install it with: pip install mcp",
-        file=sys.stderr,
-    )
-    sys.exit(1)
+    # When run directly, print a helpful message and exit.
+    # When imported (e.g. by tests), let the ImportError propagate
+    # so callers can handle it gracefully.
+    if __name__ == "__main__":
+        print(
+            "Error: the 'mcp' package is required for the MCP server.\n"
+            "Install it with: pip install mcp",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    raise
 
 from db_init import get_stats, init_database
 from db_save import save_full_session
