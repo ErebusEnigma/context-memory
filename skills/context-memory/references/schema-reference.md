@@ -200,7 +200,9 @@ Automatically keep FTS tables in sync with content tables.
 ### Session Updated Trigger
 
 ```sql
-CREATE TRIGGER sessions_updated AFTER UPDATE ON sessions BEGIN
+CREATE TRIGGER sessions_updated AFTER UPDATE ON sessions
+WHEN NEW.updated_at = OLD.updated_at
+BEGIN
     UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 ```
