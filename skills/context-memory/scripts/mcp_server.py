@@ -12,6 +12,13 @@ from __future__ import annotations
 import contextlib
 import io
 import sys
+from pathlib import Path
+
+# Ensure sibling modules (db_init, db_save, db_search) are importable regardless
+# of the working directory Claude Code launches this server from.
+_scripts_dir = str(Path(__file__).resolve().parent)
+if _scripts_dir not in sys.path:
+    sys.path.insert(0, _scripts_dir)
 
 try:
     from mcp.server.fastmcp import FastMCP
@@ -28,9 +35,9 @@ except ImportError:
         sys.exit(1)
     raise
 
-from db_init import get_stats, init_database
-from db_save import save_full_session
-from db_search import full_search
+from db_init import get_stats, init_database  # noqa: E402
+from db_save import save_full_session  # noqa: E402
+from db_search import full_search  # noqa: E402
 
 mcp = FastMCP(
     "context-memory",
