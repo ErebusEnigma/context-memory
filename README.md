@@ -83,6 +83,7 @@ This removes the skill, commands, hooks, and MCP server registration. Your saved
 
 - Python >= 3.8
 - SQLite with FTS5 support (included in Python's standard library)
+- MCP server (optional): Python >= 3.10 and `pip install mcp`
 
 ## Commands
 
