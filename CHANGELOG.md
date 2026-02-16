@@ -2,6 +2,17 @@
 
 ## [1.1.0] - 2026-02-16
 
+### Added
+- MCP server (`mcp_server.py`) exposing `context_search`, `context_save`, `context_stats`, and `context_init` tools via stdio transport using FastMCP (requires Python >= 3.10)
+- `.mcp.json` project-level MCP server configuration (dev-only; uses relative paths)
+- `install.py`: `install_mcp()` function and `--skip-mcp` flag for automatic MCP server registration
+- `pyproject.toml`: optional `[project.optional-dependencies] mcp` group
+- `uninstall.py`: `--force` flag to remove modified command files without ownership check
+- `uninstall.py`: `uninstall_mcp()` removes `context-memory` entry from `~/.claude/mcp_servers.json`
+- `auto_save.py`: `read_hook_input()`, `extract_text_content()`, `parse_transcript()`, `build_brief()` functions
+- `auto_save.py`: Loop prevention via `stop_hook_active` flag from hook input
+- 72 new tests across `test_auto_save.py` (26), `test_mcp_server.py` (19), `test_install.py` (16), `test_uninstall.py` (11)
+
 ### Fixed
 - `db_init.py`: Recursive `sessions_updated` trigger — added `WHEN NEW.updated_at = OLD.updated_at` guard to prevent infinite recursion (schema migration v3)
 - `db_save.py`: `save_topics()` returned `len(topics)` instead of counting actually inserted topics (blank entries were skipped but still counted)
@@ -12,24 +23,6 @@
 - `auto_save.py`: Silent `except Exception: pass` replaced with `traceback.print_exc()` to stderr for debuggability
 - `tests/test_db_save.py`: Environment variable leak — `os.environ["CONTEXT_MEMORY_DB_PATH"]` set without cleanup; replaced with direct sqlite3 access
 - `__init__.py`: Version `1.0.6` out of sync — updated to `1.1.0`
-
-### Changed
-- `db_prune.py`: Removed redundant FTS index rebuild after pruning — FTS sync triggers already handle row-level deletes
-- `db_utils.py`: Removed dead `escape_fts_query()` function (unused; `format_fts_query()` is used instead)
-- `db_init.py`: `get_stats()` now validates table names against `VALID_TABLES` before use in SQL
-- `.github/workflows/ci.yml`: Added `mcp` to CI dependencies so MCP tests run instead of being silently skipped
-
-### Added
-- MCP server (`mcp_server.py`) exposing `context_search`, `context_save`, `context_stats`, and `context_init` tools via stdio transport using FastMCP
-- `.mcp.json` project-level MCP server configuration
-- `install.py`: `install_mcp()` function and `--skip-mcp` flag for automatic MCP server registration
-- `pyproject.toml`: optional `[project.optional-dependencies] mcp` group
-- `tests/test_mcp_server.py`: tests for all MCP tool functions and server registration (skipped when `mcp` not installed)
-- `uninstall.py`: `--force` flag to remove modified command files without ownership check
-- `uninstall.py`: `uninstall_mcp()` removes `context-memory` entry from `~/.claude/mcp_servers.json`
-- `tests/test_uninstall.py`: tests for `_hook_matches()` normalization, `--force` commands, `uninstall_mcp()`
-
-### Fixed
 - `_hook_matches()` in `install.py` and `uninstall.py` now normalizes backslashes to forward slashes, fixing orphan hook detection on Windows
 - `mcp_server.py` adds its own directory to `sys.path` so sibling imports (`db_init`, `db_save`, `db_search`) work regardless of working directory
 - `install_mcp()` writes directly to `~/.claude/mcp_servers.json` instead of shelling out to `claude mcp add`, which fails inside a Claude Code session
@@ -44,12 +37,10 @@
 - `hooks/hooks.json`: Added `"timeout": 120` to Stop hook (was using default 600s)
 - `db_save.py`: `save_full_session()` accepts `metadata` parameter, passed through to `save_session()`
 - `db_save.py`: `--auto` + `--json` combined now injects `{"auto_save": true}` into payload metadata
-
-### Added
-- `auto_save.py`: `read_hook_input()`, `extract_text_content()`, `parse_transcript()`, `build_brief()` functions
-- `auto_save.py`: Loop prevention via `stop_hook_active` flag from hook input
-- `tests/test_auto_save.py`: 16 unit tests for new functions (`extract_text_content`, `parse_transcript`, `build_brief`)
-- `tests/test_auto_save.py`: 6 new integration tests (real session ID from stdin, stop_hook_active prevention, transcript message saving, brief from first user message, fallback on missing transcript, empty stdin backward compat)
+- `db_prune.py`: Removed redundant FTS index rebuild after pruning — FTS sync triggers already handle row-level deletes
+- `db_utils.py`: Removed dead `escape_fts_query()` function (unused; `format_fts_query()` is used instead)
+- `db_init.py`: `get_stats()` now validates table names against `VALID_TABLES` before use in SQL
+- `.github/workflows/ci.yml`: Added `mcp` to CI dependencies so MCP tests run instead of being silently skipped
 
 ## [1.0.9] - 2026-02-15
 

@@ -7,7 +7,7 @@ description: >
   discuss about', or 'find previous work on'. Do NOT use for general file
   storage, note-taking, or bookmark management.
 license: "MIT"
-compatibility: "Requires Python >= 3.8 with sqlite3 FTS5 support (included in standard library). Claude Code CLI only."
+compatibility: "Requires Python >= 3.8 with sqlite3 FTS5 support (included in standard library). MCP server requires Python >= 3.10. Claude Code CLI only."
 allowed-tools: "Bash(python:*)"
 metadata:
   author: "ErebusEnigma"

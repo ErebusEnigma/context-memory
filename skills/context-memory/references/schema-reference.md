@@ -337,7 +337,7 @@ DELETE FROM sessions WHERE id = ?;
 ```json
 {
   "cli_version": "1.0.0",
-  "model": "claude-3-opus",
+  "model": "claude-sonnet-4-5-20250929",
   "custom_field": "value"
 }
 ```
