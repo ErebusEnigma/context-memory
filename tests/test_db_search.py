@@ -1,7 +1,5 @@
 """Tests for search functionality."""
 
-import json
-
 import db_init
 import db_save
 import db_search
