@@ -35,7 +35,7 @@ def search_tier1(
 ) -> list[dict]:
     """
     Tier 1: Fast summary search.
-    Searches summaries_fts and topics_fts.
+    Searches summaries_fts, topics_fts, and code_snippets_fts.
     Target: <10ms
 
     Args:

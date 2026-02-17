@@ -152,7 +152,7 @@ This removes the skill, commands, hooks (both Stop and PreCompact), and MCP serv
 - Python >= 3.8
 - SQLite with FTS5 support (included in Python's standard library)
 - MCP server (optional): Python >= 3.10 and `pip install mcp`
-- Web dashboard (optional): `pip install context-memory[dashboard]` or `pip install flask flask-cors`
+- Web dashboard (optional): `pip install flask flask-cors`
 
 ## Commands
 
@@ -215,7 +215,7 @@ Performance is backed by SQLite tuning: WAL mode for concurrent access, 64MB cac
 
 The plugin registers two hooks:
 
-- **Stop hook** (`auto_save.py`) — Automatically saves session context when Claude Code exits. Reads the JSON payload from Claude Code's stdin (session ID, transcript path) and parses the JSONL transcript to extract conversation messages. For long conversations, uses head+tail sampling (first 5 + last 10 messages) to keep the problem statement and resolution while trimming the middle. Detects the current git branch and adds it as a topic. Checks `stop_hook_active` to prevent recursive invocation. Skips saving if a rich `/remember` session already exists for the same project within a configurable dedup window (default 5 minutes) — identified by checking for a non-null detailed summary, which distinguishes `/remember` saves from thin auto-saves.
+- **Stop hook** (`auto_save.py`) — Automatically saves session context when Claude Code exits. Reads the JSON payload from Claude Code's stdin (session ID, transcript path) and parses the JSONL transcript to extract conversation messages. For long conversations, uses head+tail sampling (first 5 + last 10 messages) to keep the problem statement and resolution while trimming the middle. Detects the current git branch and adds it as a topic. Checks `stop_hook_active` to prevent recursive invocation. Skips saving if a rich `/remember` session already exists for the same project within a configurable dedup window (default 5 minutes) — identified by checking that the summary brief doesn't match the `Auto-saved session` pattern, which distinguishes `/remember` saves from thin auto-saves.
 
 - **PreCompact hook** (`pre_compact_save.py`) — Saves a full conversation checkpoint to the database before Claude Code compacts context. This preserves all messages without truncation or sampling. The recovery workflow: context gets compacted and detail is lost → Claude calls the `context_load_checkpoint` MCP tool → the full pre-compaction conversation is restored from the checkpoint.
 
@@ -308,7 +308,7 @@ The context-memory skill also activates on natural language:
 A full single-page application for browsing, searching, and managing your stored sessions. Built with ~2,400 lines of vanilla JS/CSS/HTML plus a 500-line Flask backend exposing 17 REST API endpoints.
 
 ```bash
-pip install context-memory[dashboard]   # or: pip install flask flask-cors
+pip install flask flask-cors
 python skills/context-memory/scripts/dashboard.py
 ```
 
