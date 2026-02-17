@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS code_snippets (
 
 -- FTS5 Virtual Tables for full-text search
 
--- Summaries FTS (Tier 1 - fast search)
+-- Summaries FTS (Tier 1 - primary ranking signal)
 CREATE VIRTUAL TABLE IF NOT EXISTS summaries_fts USING fts5(
     brief,
     detailed,

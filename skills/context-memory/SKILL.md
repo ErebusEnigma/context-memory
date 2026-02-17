@@ -175,7 +175,7 @@ python "~/.claude/skills/context-memory/scripts/db_search.py" "<QUERY>" --format
 ## Best Practices
 
 1. **When saving**: Always use `--json` for full data. Always ask user if they want to add a note/annotation
-2. **When searching**: Start with tier 1 (summaries), offer detailed search if needed
+2. **When searching**: Start with tier 1 (summary-ranked with topic/snippet boost), offer detailed search if needed
 3. **Topics**: Use consistent, lowercase topic names
 4. **Summaries**: Focus on the "why" not just the "what"
 5. **Code snippets**: Only save truly reusable or significant code

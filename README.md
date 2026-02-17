@@ -50,7 +50,7 @@ Without it, every session is a blank slate. With it, Claude Code has a long-term
 - **Cross-session memory** - Save and recall past work across Claude Code sessions
 - **Structured AI summaries** - `/remember` generates rich summaries with brief/detailed text, key decisions, problems solved, technologies used, and outcome classification (success/partial/abandoned)
 - **Full-text search** - FTS5 with Porter stemming for fast, fuzzy search
-- **Two-tier retrieval** - Fast summary search (<10ms) + deep content fetch (<50ms)
+- **Two-tier retrieval** - Summary-ranked search with multi-source boost (<10ms) + deep content fetch (<50ms)
 - **Project-scoped or global** - Filter by current project or search everything
 - **Topic categorization** - Auto-extracted topics for browsable history
 - **Code snippet storage** - Preserve important code with language and context
@@ -204,7 +204,7 @@ Sessions are stored in a SQLite database at `~/.claude/context-memory/context.db
 
 Search uses FTS5 (Full-Text Search 5) with two tiers:
 
-1. **Tier 1 (Fast)** - Searches summaries, topics, and code snippets using BM25 ranking (<10ms)
+1. **Tier 1 (Fast)** - Ranks by summary BM25 with a boost for each additional matching source (topic, code snippet). Non-summary matches are appended after summary matches. (<10ms)
 2. **Tier 2 (Deep)** - Fetches full messages and code snippets for selected sessions (<50ms)
 
 Porter stemming is enabled, so "running" matches "run" and "authentication" matches "authenticate".

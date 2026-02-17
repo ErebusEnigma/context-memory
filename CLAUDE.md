@@ -43,7 +43,7 @@ ruff check .                                              # Lint
 
 - Python >= 3.8 compatibility required
 - Line length: 120 characters
-- SQLite FTS5 for full-text search with BM25 ranking
+- SQLite FTS5 for full-text search with summary-ranked BM25 + multi-source boost
 - `VALID_TABLES` is defined once in `db_utils.py` — import it, don't redefine
 - `STATS_TABLES` excludes internal tables (like `schema_version`) from user-facing stats
 - Use `get_connection()` context manager for all DB access

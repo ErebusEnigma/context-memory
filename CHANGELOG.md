@@ -7,12 +7,14 @@
 - `uninstall.py`: generalized hook removal to iterate all hook type keys, not just Stop
 - `_hook_matches()` in both install/uninstall: now recognizes `pre_compact_save.py` alongside `auto_save.py` and `db_save.py`
 - `tests/test_dashboard.py`: added `pytest.importorskip("flask_cors")` guard to prevent import errors when flask-cors is not installed
+- `search_tier1()`: fixed cross-table BM25 score contamination — topic/snippet BM25 scores are no longer mixed with summary scores in the final sort. Summary BM25 is now the sole ranking signal with a fixed boost per additional matching source (topic/snippet). Non-summary matches are bucketed separately after summary matches.
 
 ### Changed
 - Extracted shared `read_hook_input()` and `extract_text_content(content, max_length=None)` to `db_utils.py`, replacing duplicate implementations in `auto_save.py` and `pre_compact_save.py`
 - `__init__.py`: added exports for `save_checkpoint`, `prune_checkpoints`, `read_hook_input`, and `extract_text_content`
 - Comprehensive README rewrite: added Architecture section, CI/test badges, CLI Tools section, Testing section; expanded Features, Installation, How It Works, and Web Dashboard sections to match actual codebase capabilities
 - `schema-reference.md`: added `context_checkpoints` table documentation and Schema Migrations section
+- Updated tier 1 search descriptions in README, SKILL.md, CLAUDE.md, schema-reference.md, mcp_server.py, and db_init.py to reflect summary-ranked multi-source boost behavior
 
 ## [1.3.0] - 2026-02-17
 

@@ -135,7 +135,7 @@ CREATE TABLE context_checkpoints (
 
 ### summaries_fts
 
-Full-text search on summaries. This is the primary search target (Tier 1).
+Full-text search on summaries. Primary ranking signal for Tier 1 search.
 
 ```sql
 CREATE VIRTUAL TABLE summaries_fts USING fts5(
@@ -234,7 +234,7 @@ END;
 
 ## Query Examples
 
-### Tier 1: Fast Summary Search
+### Tier 1: Summary-Ranked Search
 
 ```sql
 SELECT
@@ -252,6 +252,10 @@ WHERE summaries_fts MATCH '"authentication"*'
 ORDER BY relevance
 LIMIT 10;
 ```
+
+Note: `search_tier1()` also queries `topics_fts` and `code_snippets_fts` for matching
+session IDs (without BM25 scores) and applies a fixed boost per additional source in the
+merge step. Only summary BM25 scores are used for numeric ranking.
 
 ### Topic Search
 
@@ -321,6 +325,8 @@ PRAGMA temp_store=MEMORY;     -- In-memory temp tables
 ### BM25 Ranking
 
 FTS5 uses BM25 (Best Match 25) for relevance ranking. Lower scores indicate better matches. Use `ORDER BY bm25(table_name)` for relevance-sorted results.
+
+**Important:** BM25 scores are only comparable within a single FTS virtual table. `search_tier1()` uses summary BM25 as the sole ranking score; topic and snippet matches provide a fixed boost per additional source rather than contributing their own BM25 values.
 
 ### Index Usage
 

@@ -68,9 +68,9 @@ def context_search(
 ) -> dict:
     """Search past Claude Code sessions stored in context memory.
 
-    Uses FTS5 full-text search with BM25 ranking across summaries,
-    topics, and code snippets (tier 1), optionally fetching full
-    messages and code (tier 2).
+    Uses FTS5 full-text search ranked by summary BM25 with
+    multi-source boosting from topic and code snippet matches
+    (tier 1), optionally fetching full messages and code (tier 2).
 
     Args:
         query: Search terms (supports stemming — "running" matches "run").
