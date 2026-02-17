@@ -37,4 +37,10 @@ def isolated_db(tmp_path, monkeypatch):
         monkeypatch.setattr(mcp_server, "DB_PATH", db_path, raising=False)
     except (ImportError, SystemExit):
         pass
+    # Patch dashboard if it has been imported (requires optional flask package)
+    try:
+        import dashboard  # noqa: F811
+        monkeypatch.setattr(dashboard, "DB_PATH", db_path, raising=False)
+    except (ImportError, SystemExit):
+        pass
     yield db_path

@@ -42,6 +42,7 @@ jobs:
         run: |
           pip install pytest
           pip install mcp || true  # mcp requires Python >=3.10; skip on older versions
+          pip install flask flask-cors || true
 
       - name: Run tests
         run: python -m pytest tests/ -v
