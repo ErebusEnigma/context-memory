@@ -3,14 +3,20 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.egg-info/
+.eggs/
 dist/
 build/
 *.egg
+*.whl
+*.tar.gz
+pip-log.txt
+MANIFEST
 
 # SQLite
 *.db
 *.db-wal
 *.db-shm
+*.db-journal
 
 # IDE
 .vscode/
@@ -23,11 +29,17 @@ build/
 .DS_Store
 Thumbs.db
 Desktop.ini
+ehthumbs.db
 
 # Testing & Coverage
 .pytest_cache/
 .coverage
+.coverage.*
+coverage.xml
 htmlcov/
+.tox/
+.nox/
+.hypothesis/
 
 # Type checking & Linting
 .mypy_cache/
@@ -35,8 +47,13 @@ htmlcov/
 
 # Environment
 .env
+.env.*
 .venv/
 venv/
+.python-version
+
+# Logs
+*.log
 
 # Claude Code local settings
 .claude/
