@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Two-tier search for context-memory plugin.
-Tier 1: Fast summary search (<10ms)
+Tier 1: Summary-ranked search with multi-source boost (<10ms)
 Tier 2: Deep content search (<50ms)
 """
 from __future__ import annotations
@@ -27,6 +27,9 @@ MAX_SNIPPETS_DISPLAY = 5
 MAX_MESSAGE_LENGTH = 300
 MAX_SNIPPET_LENGTH = 500
 
+BOOST_PER_SOURCE = 0.3          # fixed boost per additional source (topic/snippet)
+PER_SOURCE_MULTIPLIER = 10      # fetch up to limit * K per source
+
 
 def search_tier1(
     query: str,
@@ -34,8 +37,9 @@ def search_tier1(
     limit: int = 10
 ) -> list[dict]:
     """
-    Tier 1: Fast summary search.
-    Searches summaries_fts, topics_fts, and code_snippets_fts.
+    Tier 1: Summary-ranked search with multi-source boosting.
+    Ranks by summary BM25 with a fixed boost per additional matching source
+    (topic/snippet). Non-summary matches are appended after summary matches.
     Target: <10ms
 
     Args:
@@ -51,9 +55,10 @@ def search_tier1(
 
     fts_query = format_fts_query(query)
     project_hash = hash_project_path(project_path) if project_path else None
+    per_source_limit = max(limit * PER_SOURCE_MULTIPLIER, limit)
 
     with get_connection(readonly=True) as conn:
-        # Search summaries with BM25 ranking
+        # Step 1: Search summaries with BM25 ranking (primary signal)
         sql = """
             SELECT
                 s.id,
@@ -70,34 +75,24 @@ def search_tier1(
             JOIN sessions s ON s.id = sum.session_id
             WHERE summaries_fts MATCH ?
         """
-        params = [fts_query]
+        params: list = [fts_query]
 
         if project_hash:
             sql += " AND s.project_hash = ?"
             params.append(project_hash)
 
         sql += " ORDER BY relevance LIMIT ?"
-        params.append(limit)
+        params.append(per_source_limit)
 
         cursor = conn.execute(sql, params)
         summary_results = [dict(row) for row in cursor.fetchall()]
 
-        # Also search topics
+        # Step 2: Query topics — collect matching session IDs only
         sql = """
-            SELECT DISTINCT
-                s.id,
-                s.session_id,
-                s.project_path,
-                s.created_at,
-                s.message_count,
-                sum.brief,
-                sum.outcome,
-                sum.technologies,
-                bm25(topics_fts) as relevance
+            SELECT DISTINCT s.id
             FROM topics_fts
             JOIN topics t ON t.id = topics_fts.rowid
             JOIN sessions s ON s.id = t.session_id
-            LEFT JOIN summaries sum ON sum.session_id = s.id
             WHERE topics_fts MATCH ?
         """
         params = [fts_query]
@@ -106,28 +101,18 @@ def search_tier1(
             sql += " AND s.project_hash = ?"
             params.append(project_hash)
 
-        sql += " ORDER BY relevance LIMIT ?"
-        params.append(limit)
+        sql += " LIMIT ?"
+        params.append(per_source_limit)
 
         cursor = conn.execute(sql, params)
-        topic_results = [dict(row) for row in cursor.fetchall()]
+        topic_match_ids = {row["id"] for row in cursor.fetchall()}
 
-        # Also search code snippets
+        # Step 3: Query snippets — collect matching session IDs only
         sql = """
-            SELECT DISTINCT
-                s.id,
-                s.session_id,
-                s.project_path,
-                s.created_at,
-                s.message_count,
-                sum.brief,
-                sum.outcome,
-                sum.technologies,
-                bm25(code_snippets_fts) as relevance
+            SELECT DISTINCT s.id
             FROM code_snippets_fts
             JOIN code_snippets cs ON cs.id = code_snippets_fts.rowid
             JOIN sessions s ON s.id = cs.session_id
-            LEFT JOIN summaries sum ON sum.session_id = s.id
             WHERE code_snippets_fts MATCH ?
         """
         params = [fts_query]
@@ -136,38 +121,79 @@ def search_tier1(
             sql += " AND s.project_hash = ?"
             params.append(project_hash)
 
-        sql += " ORDER BY relevance LIMIT ?"
-        params.append(limit)
+        sql += " LIMIT ?"
+        params.append(per_source_limit)
 
         cursor = conn.execute(sql, params)
-        snippet_results = [dict(row) for row in cursor.fetchall()]
+        snippet_match_ids = {row["id"] for row in cursor.fetchall()}
 
-        # Merge results, removing duplicates
-        seen_ids = set()
-        merged = []
+        # Step 4: Merge into two buckets
+        # Summary bucket: sessions that matched in summaries (boosted by extra sources)
+        by_id = {r["id"]: r for r in summary_results}
+        summary_ids = set(by_id.keys())
 
-        for result in summary_results + topic_results + snippet_results:
-            if result['id'] not in seen_ids:
-                seen_ids.add(result['id'])
-                merged.append(result)
+        for sid, r in by_id.items():
+            sources = ["summary"]
+            extra = 0
+            if sid in topic_match_ids:
+                sources.append("topic")
+                extra += 1
+            if sid in snippet_match_ids:
+                sources.append("snippet")
+                extra += 1
+            r["match_sources"] = sources
+            r["relevance"] = float(r.get("relevance", 0.0)) - (BOOST_PER_SOURCE * extra)
 
-        # Batch-fetch topics for all merged results
-        merged_ids = [r['id'] for r in merged]
+        summary_bucket = list(by_id.values())
+
+        # Non-summary bucket: sessions matching topic/snippet but NOT summaries
+        non_summary_ids = (topic_match_ids | snippet_match_ids) - summary_ids
+        non_summary_bucket = []
+        if non_summary_ids:
+            placeholders = ",".join("?" * len(non_summary_ids))
+            sql = f"""
+                SELECT s.id, s.session_id, s.project_path, s.created_at, s.message_count,
+                       sum.brief, sum.outcome, sum.technologies
+                FROM sessions s
+                LEFT JOIN summaries sum ON sum.session_id = s.id
+                WHERE s.id IN ({placeholders})
+            """
+            cursor = conn.execute(sql, list(non_summary_ids))
+            for row in cursor.fetchall():
+                d = dict(row)
+                sources = []
+                if d["id"] in topic_match_ids:
+                    sources.append("topic")
+                if d["id"] in snippet_match_ids:
+                    sources.append("snippet")
+                d["match_sources"] = sources
+                d["relevance"] = None
+                non_summary_bucket.append(d)
+
+        # Step 5: Batch-fetch topics, sort, and return
+        merged = summary_bucket + non_summary_bucket
+        merged_ids = [r["id"] for r in merged]
         if merged_ids:
-            placeholders = ','.join('?' * len(merged_ids))
+            placeholders = ",".join("?" * len(merged_ids))
             cursor = conn.execute(
                 f"SELECT session_id, topic FROM topics WHERE session_id IN ({placeholders})",
                 merged_ids,
             )
             topics_map = {}
             for row in cursor.fetchall():
-                topics_map.setdefault(row['session_id'], []).append(row['topic'])
+                topics_map.setdefault(row["session_id"], []).append(row["topic"])
             for result in merged:
-                result['topics'] = topics_map.get(result['id'], [])
+                result["topics"] = topics_map.get(result["id"], [])
 
-        # Sort by relevance and limit
-        merged.sort(key=lambda x: x.get('relevance', 0))
-        return merged[:limit]
+        # Summary bucket: by boosted BM25 ascending (more negative = better match)
+        summary_bucket.sort(key=lambda x: x.get("relevance", 0.0))
+
+        # Non-summary bucket: most sources first, then most recent first
+        non_summary_bucket.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        non_summary_bucket.sort(key=lambda x: -len(x.get("match_sources", [])))
+
+        final = summary_bucket + non_summary_bucket
+        return final[:limit]
 
 
 def search_tier2(

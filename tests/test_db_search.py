@@ -182,6 +182,64 @@ class TestSearchTier1CodeSnippets:
         assert len(results) >= 1
 
 
+class TestSearchTier1Ranking:
+    def test_topic_tag_does_not_outrank_strong_summary(self, isolated_db):
+        """A topic-only match must not outrank a summary match.
+
+        Regression test for cross-table BM25 score contamination: topic FTS scores
+        lived on a different scale than summary scores, so merging and sorting by
+        raw BM25 let topic-only matches outrank strong summary matches.
+        """
+        db_init.init_database()
+
+        # Session A: matches "authentication" in summary
+        sid_a = db_save.save_session("sess-strong-summary", "/tmp/p")
+        db_save.save_summary(sid_a, brief="Implemented authentication system",
+                             detailed="Built complete authentication with JWT tokens and refresh rotation")
+        db_save.save_topics(sid_a, ["backend", "security"])
+
+        # Session B: NO summary match for authentication, only a topic tag
+        sid_b = db_save.save_session("sess-topic-only", "/tmp/p")
+        db_save.save_summary(sid_b, brief="Caching improvements",
+                             detailed="Improved cache hit ratios and eviction policies")
+        db_save.save_topics(sid_b, ["caching", "authentication"])
+
+        results = db_search.search_tier1("authentication")
+        result_ids = [r["session_id"] for r in results]
+
+        assert "sess-strong-summary" in result_ids, "Summary match should appear in results"
+        assert "sess-topic-only" in result_ids, "Topic-only match should appear in results"
+        assert result_ids.index("sess-strong-summary") < result_ids.index("sess-topic-only"), \
+            "Summary match should rank above topic-only match"
+
+    def test_multi_source_match_ranks_higher_than_single(self, isolated_db):
+        """Sessions matching in summary + topic + snippet should rank above summary-only
+        matches when summary scores are similar."""
+        db_init.init_database()
+
+        # Session A: matches in summary + topic + snippet
+        sid_a = db_save.save_session("sess-multi-source", "/tmp/p")
+        db_save.save_summary(sid_a, brief="Fixed authentication bug in login flow",
+                             detailed="Resolved authentication token expiration issue")
+        db_save.save_topics(sid_a, ["authentication", "bugfix"])
+        db_save.save_code_snippet(sid_a, code="verify_auth_token()", language="python",
+                                  description="Authentication token verification")
+
+        # Session B: matches only in summary with similar text
+        sid_b = db_save.save_session("sess-summary-only", "/tmp/p")
+        db_save.save_summary(sid_b, brief="Refactored authentication middleware layer",
+                             detailed="Cleaned up authentication code in middleware")
+        db_save.save_topics(sid_b, ["refactoring", "cleanup"])
+
+        results = db_search.search_tier1("authentication")
+        result_ids = [r["session_id"] for r in results]
+
+        assert "sess-multi-source" in result_ids
+        assert "sess-summary-only" in result_ids
+        assert result_ids.index("sess-multi-source") < result_ids.index("sess-summary-only"), \
+            "3-source match should rank above 1-source match with similar summary score"
+
+
 class TestSearchTier1ProjectFilter:
     def test_filters_by_project_path(self, isolated_db):
         """Tier 1 should filter results to the specified project."""
