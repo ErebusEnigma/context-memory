@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.3.0] - 2026-02-17
+
+### Added
+- **Pre-compact context checkpoints** — saves the full conversation transcript to the database before context compaction, enabling seamless recovery of lost detail
+  - `pre_compact_save.py` hook handler: captures all messages without truncation or sampling
+  - Schema v4: `context_checkpoints` table with session/project indexes
+  - `context_load_checkpoint` MCP tool for on-demand retrieval by session ID or project path
+  - Checkpoint pruning in `db_prune.py` (per-session and age-based)
+  - PreCompact hook registered in `hooks/hooks.json`
+- CLAUDE.md compact instructions: guides the summarizer on what to preserve during compaction
+- Post-compaction context recovery instructions in CLAUDE.md
+- 50 comprehensive dashboard API tests covering all 17 REST endpoints
+- 37 new tests for the pre-compact checkpoint system (571 lines)
+- `pytest.importorskip` pattern for optional Flask dependency in dashboard tests
+
+### Changed
+- `db_utils.py`: `VALID_TABLES` and `STATS_TABLES` now include `context_checkpoints`
+- `db_init.py`: schema version bumped to 4; added `_migrate_v3_to_v4` migration
+- `mcp_server.py`: registered `context_load_checkpoint` tool
+- `.github/workflows/ci.yml`: added Flask to CI test dependencies
+- `conftest.py`: `isolated_db` fixture now patches `pre_compact_save` module
+
 ## [1.2.0] - 2026-02-17
 
 ### Added
