@@ -10,6 +10,17 @@
           }
         ]
       }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python ~/.claude/skills/context-memory/scripts/pre_compact_save.py",
+            "timeout": 30
+          }
+        ]
+      }
     ]
   }
 }

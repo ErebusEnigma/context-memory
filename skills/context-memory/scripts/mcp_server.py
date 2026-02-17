@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import json
 import socket
 import sys
 import threading
@@ -40,6 +41,7 @@ except ImportError:
 from db_init import get_stats, init_database  # noqa: E402
 from db_save import save_full_session  # noqa: E402
 from db_search import full_search  # noqa: E402
+from db_utils import db_exists, get_connection, hash_project_path  # noqa: E402
 
 mcp = FastMCP(
     "context-memory",
@@ -162,6 +164,90 @@ def context_init(force: bool = False) -> dict:
     if created:
         return {"created": True, "message": "Database initialized."}
     return {"created": False, "message": "Database already exists."}
+
+
+@mcp.tool()
+def context_load_checkpoint(
+    session_id: str | None = None,
+    project_path: str | None = None,
+    last_n_messages: int | None = None,
+) -> dict:
+    """Load the most recent pre-compact context checkpoint.
+
+    Call this after context compaction to restore the full conversation
+    that was saved before compaction. Returns the complete message
+    history from the most recent checkpoint.
+
+    Args:
+        session_id: Load checkpoint for this session. If None, loads the
+                    most recent checkpoint for the project.
+        project_path: Filter by project directory.
+        last_n_messages: Only return the last N messages (for partial reload).
+
+    Returns:
+        Dict with checkpoint info and messages array, or error message.
+    """
+    if not db_exists():
+        return {"error": "Database does not exist.", "messages": []}
+
+    with get_connection(readonly=True) as conn:
+        if session_id:
+            cursor = conn.execute(
+                """
+                SELECT id, session_id, project_path, checkpoint_number,
+                       trigger_type, messages, message_count, created_at
+                FROM context_checkpoints
+                WHERE session_id = ?
+                ORDER BY created_at DESC, checkpoint_number DESC
+                LIMIT 1
+                """,
+                (session_id,),
+            )
+        elif project_path:
+            proj_hash = hash_project_path(project_path)
+            cursor = conn.execute(
+                """
+                SELECT id, session_id, project_path, checkpoint_number,
+                       trigger_type, messages, message_count, created_at
+                FROM context_checkpoints
+                WHERE project_hash = ?
+                ORDER BY created_at DESC, checkpoint_number DESC
+                LIMIT 1
+                """,
+                (proj_hash,),
+            )
+        else:
+            # No filter: return most recent checkpoint overall
+            cursor = conn.execute(
+                """
+                SELECT id, session_id, project_path, checkpoint_number,
+                       trigger_type, messages, message_count, created_at
+                FROM context_checkpoints
+                ORDER BY created_at DESC, checkpoint_number DESC
+                LIMIT 1
+                """
+            )
+
+        row = cursor.fetchone()
+        if not row:
+            return {"error": "No checkpoints found.", "messages": []}
+
+        result = dict(row)
+
+        # Parse the messages JSON blob
+        try:
+            messages = json.loads(result["messages"])
+        except (json.JSONDecodeError, TypeError):
+            messages = []
+
+        # Apply last_n_messages filter
+        if last_n_messages is not None and last_n_messages > 0:
+            messages = messages[-last_n_messages:]
+
+        result["messages"] = messages
+        result["message_count"] = len(messages)
+
+    return result
 
 
 _dashboard_thread = None

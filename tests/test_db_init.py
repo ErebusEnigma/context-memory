@@ -71,7 +71,7 @@ class TestSchemaVersioning:
         with db_utils.get_connection(readonly=True) as conn:
             cursor = conn.execute("SELECT version FROM schema_version ORDER BY version DESC LIMIT 1")
             row = cursor.fetchone()
-        assert row[0] == 3
+        assert row[0] == db_init.CURRENT_SCHEMA_VERSION
 
     def test_legacy_db_returns_version_1(self, isolated_db):
         """A DB without schema_version table is implicitly version 1."""

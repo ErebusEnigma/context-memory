@@ -19,8 +19,9 @@ skills/context-memory/        # Skill definition (SKILL.md)
     mcp_server.py            # MCP server (FastMCP, stdio transport)
     dashboard.py             # Web dashboard (Flask REST API + SPA)
     static/                  # Dashboard frontend (vanilla JS, CSS)
+    pre_compact_save.py        # PreCompact hook: saves full context before compaction
 commands/                     # /remember and /recall command definitions
-hooks/                        # Auto-save stop hook (with dedup)
+hooks/                        # Auto-save stop hook + PreCompact checkpoint hook
 ```
 
 ## Dev Commands
@@ -45,3 +46,22 @@ ruff check .                                              # Lint
 - All table names in SQL must be validated against `VALID_TABLES` (no raw f-strings)
 - Bare `except:` is not allowed — always catch specific exceptions
 - Schema changes require a new migration in `MIGRATIONS` dict and `CURRENT_SCHEMA_VERSION` bump
+
+## Compact Instructions
+
+When summarizing this conversation for compaction, ALWAYS preserve:
+- The current task and what step we're on
+- All file paths being actively modified
+- Key decisions made and their rationale
+- Any error states or blockers being worked on
+- Test results and their pass/fail status
+- The specific user request that started the current work
+
+## Post-Compaction Context Recovery
+
+After context has been compacted, you can restore the full pre-compaction conversation
+by calling the `context_load_checkpoint` MCP tool with the current project path.
+Use this when you need details that were lost during summarization — specific code
+that was discussed, exact error messages, file contents that were read, etc.
+Do NOT call this automatically on every compaction — only when you actually need
+detail that the compaction summary doesn't provide.

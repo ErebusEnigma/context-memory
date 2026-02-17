@@ -13,7 +13,7 @@ except ImportError:
     from db_utils import DB_PATH, STATS_TABLES, VALID_TABLES, db_exists, ensure_db_dir, get_connection
 
 # Schema versioning
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 
 SCHEMA_SQL = """
 -- Core Tables
@@ -201,6 +201,23 @@ BEGIN
     UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
+-- Context checkpoints: full conversation snapshots saved before compaction
+CREATE TABLE IF NOT EXISTS context_checkpoints (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    project_path TEXT,
+    project_hash TEXT,
+    checkpoint_number INTEGER NOT NULL DEFAULT 1,
+    trigger_type TEXT NOT NULL DEFAULT 'auto',
+    messages TEXT NOT NULL,
+    message_count INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_checkpoints_session_id ON context_checkpoints(session_id);
+CREATE INDEX IF NOT EXISTS idx_checkpoints_project_hash ON context_checkpoints(project_hash);
+CREATE INDEX IF NOT EXISTS idx_checkpoints_created_at ON context_checkpoints(created_at DESC);
+
 -- Schema versioning
 CREATE TABLE IF NOT EXISTS schema_version (
     version INTEGER NOT NULL,
@@ -248,10 +265,32 @@ def _migrate_v2_to_v3(conn) -> None:
     conn.execute("INSERT INTO schema_version (version) VALUES (3)")
 
 
+def _migrate_v3_to_v4(conn) -> None:
+    """Migrate from v3 to v4: add context_checkpoints table for pre-compact saves."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS context_checkpoints (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            project_path TEXT,
+            project_hash TEXT,
+            checkpoint_number INTEGER NOT NULL DEFAULT 1,
+            trigger_type TEXT NOT NULL DEFAULT 'auto',
+            messages TEXT NOT NULL,
+            message_count INTEGER NOT NULL DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_checkpoints_session_id ON context_checkpoints(session_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_checkpoints_project_hash ON context_checkpoints(project_hash)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_checkpoints_created_at ON context_checkpoints(created_at DESC)")
+    conn.execute("INSERT INTO schema_version (version) VALUES (4)")
+
+
 # Migration registry: version -> migration function
 MIGRATIONS = {
     2: _migrate_v1_to_v2,
     3: _migrate_v2_to_v3,
+    4: _migrate_v3_to_v4,
 }
 
 
@@ -324,7 +363,7 @@ def verify_schema() -> dict:
     expected_tables = [
         'sessions', 'messages', 'summaries', 'topics', 'code_snippets',
         'summaries_fts', 'messages_fts', 'topics_fts', 'code_snippets_fts',
-        'schema_version',
+        'schema_version', 'context_checkpoints',
     ]
 
     if not db_exists():

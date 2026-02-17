@@ -116,7 +116,7 @@ def db_exists() -> bool:
     return DB_PATH.exists()
 
 
-VALID_TABLES = {'sessions', 'messages', 'summaries', 'topics', 'code_snippets', 'schema_version'}
+VALID_TABLES = {'sessions', 'messages', 'summaries', 'topics', 'code_snippets', 'schema_version', 'context_checkpoints'}
 
 # Tables to include in stats output (skip internal tables)
 STATS_TABLES = VALID_TABLES - {'schema_version'}
