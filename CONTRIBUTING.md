@@ -18,6 +18,7 @@ cd context-memory
 ```bash
 pip install ruff pytest
 pip install flask flask-cors   # optional, for dashboard development
+pip install mcp                # optional, for MCP server development (requires Python >= 3.10)
 ```
 
 ## Verify Schema

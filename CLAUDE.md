@@ -11,6 +11,7 @@ A Claude Code plugin that provides persistent, searchable context storage across
 .mcp.json                    # MCP server config (project-level)
 skills/context-memory/        # Skill definition (SKILL.md)
   scripts/
+    __init__.py              # Package init, version, public API re-exports
     db_init.py               # Schema creation, verification, stats, migrations
     db_save.py               # Session storage logic, deduplication
     db_search.py             # FTS5 search (tier 1 + tier 2)
@@ -18,8 +19,11 @@ skills/context-memory/        # Skill definition (SKILL.md)
     db_utils.py              # Connection management, helpers, VALID_TABLES
     mcp_server.py            # MCP server (FastMCP, stdio transport)
     dashboard.py             # Web dashboard (Flask REST API + SPA)
+    auto_save.py             # Stop hook: cross-platform auto-save wrapper
+    pre_compact_save.py      # PreCompact hook: saves full context before compaction
     static/                  # Dashboard frontend (vanilla JS, CSS)
-    pre_compact_save.py        # PreCompact hook: saves full context before compaction
+  references/
+    schema-reference.md      # Full database schema reference
 commands/                     # /remember and /recall command definitions
 hooks/                        # Auto-save stop hook + PreCompact checkpoint hook
 ```

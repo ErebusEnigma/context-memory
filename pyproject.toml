@@ -12,6 +12,7 @@ keywords = ["memory", "context", "sqlite", "fts5", "claude-code", "sessions"]
 
 [project.optional-dependencies]
 mcp = ["mcp>=1.0.0"]
+dashboard = ["flask>=2.0.0", "flask-cors>=3.0.0"]
 
 [project.urls]
 Homepage = "https://github.com/ErebusEnigma/context-memory"

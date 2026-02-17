@@ -180,7 +180,40 @@ python "~/.claude/skills/context-memory/scripts/db_search.py" "<QUERY>" --format
 4. **Summaries**: Focus on the "why" not just the "what"
 5. **Code snippets**: Only save truly reusable or significant code
 
+## Pre-Compact Context Checkpoints
+
+The plugin saves a full conversation checkpoint before Claude Code compacts context, preventing loss of detail.
+
+### How it works
+
+1. **PreCompact hook** (`pre_compact_save.py`) — Triggered automatically before compaction. Reads the transcript and saves all messages to the `context_checkpoints` table without truncation or sampling.
+2. **`context_load_checkpoint` MCP tool** — Restores the full conversation after compaction. Accepts `session_id`, `project_path`, and optional `last_n_messages` parameters.
+3. **Checkpoint pruning** — `db_prune.py` prunes old checkpoints (per-session and age-based) alongside regular session pruning.
+
+The `context_checkpoints` table (schema v4) stores:
+- `session_id`, `project_path`, `project_hash` — checkpoint identity
+- `checkpoint_number`, `trigger_type` — sequencing and trigger source (`auto` or `manual`)
+- `messages` — full JSON message array
+- `message_count`, `created_at` — metadata
+
+### Post-compaction recovery
+
+After compaction, call the `context_load_checkpoint` MCP tool with the current project path to restore full conversation detail. Only use this when the compaction summary is missing information you need.
+
+## MCP Tools
+
+The optional MCP server (`mcp_server.py`) exposes these tools:
+
+- `context_search` — Search past sessions (FTS5 + BM25 ranking)
+- `context_save` — Save a session with messages, summary, topics, snippets
+- `context_stats` — Database statistics (table counts, DB size)
+- `context_init` — Initialize or verify the database schema
+- `context_load_checkpoint` — Load a pre-compact context checkpoint
+- `context_dashboard` — Launch the web dashboard in the background
+
+Requires Python >= 3.10 and `pip install mcp`.
+
 ## Related Files
 
-- [Schema Reference](references/schema-reference.md) — Full database schema
+- [Schema Reference](references/schema-reference.md) — Full database schema (v4)
 - Scripts in `scripts/` directory

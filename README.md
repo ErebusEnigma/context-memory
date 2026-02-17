@@ -47,6 +47,11 @@ Without it, every session is a blank slate. With it, Claude Code has a long-term
 - **Project-scoped or global** - Filter by current project or search everything
 - **Topic categorization** - Auto-extracted topics for browsable history
 - **Code snippet storage** - Preserve important code with language and context
+- **Pre-compact checkpoints** - Saves full conversation before context compaction for zero context loss
+- **Auto-save on exit** - Stop hook captures session context automatically when Claude Code exits
+- **Web dashboard** - Browser-based UI for browsing, searching, and analyzing sessions
+- **MCP server** - Six tools for programmatic access from any MCP-compatible client
+- **Database pruning** - Prune old sessions by age or count with dry-run preview
 
 ## Installation
 
@@ -131,6 +136,7 @@ Sessions are stored in a SQLite database at `~/.claude/context-memory/context.db
 - **Topics** - Categorical tags for each session
 - **Messages** - Key message excerpts
 - **Code Snippets** - Important code with language and file path
+- **Context Checkpoints** - Full conversation snapshots saved before context compaction (schema v4)
 
 ### Search
 
@@ -141,9 +147,12 @@ Search uses FTS5 (Full-Text Search 5) with two tiers:
 
 Porter stemming is enabled, so "running" matches "run" and "authentication" matches "authenticate".
 
-### Auto-Save Hook
+### Hooks
 
-The plugin includes a Stop hook that automatically saves session context when Claude Code exits. The hook reads the JSON payload from Claude Code's stdin (session ID, transcript path) and parses the JSONL transcript to extract real conversation messages. This produces rich, searchable sessions — not just placeholder records. When no transcript is available, it falls back to a minimal save with a synthetic ID. The hook also respects `stop_hook_active` to prevent loops and deduplicates against recent `/remember` saves.
+The plugin registers two hooks:
+
+- **Stop hook** (`auto_save.py`) — Automatically saves session context when Claude Code exits. Reads the JSON payload from Claude Code's stdin (session ID, transcript path) and parses the JSONL transcript to extract real conversation messages. Produces rich, searchable sessions with deduplication against recent `/remember` saves.
+- **PreCompact hook** (`pre_compact_save.py`) — Saves a full conversation checkpoint to the database before Claude Code compacts context. This preserves all messages without truncation or sampling, enabling recovery via the `context_load_checkpoint` MCP tool after compaction.
 
 ### MCP Server
 
@@ -154,6 +163,7 @@ An optional MCP (Model Context Protocol) server exposes context-memory operation
 - `context_save` — Save a session with messages, summary, topics, snippets
 - `context_stats` — Database statistics
 - `context_init` — Initialize/verify database
+- `context_load_checkpoint` — Load a pre-compact context checkpoint to restore full conversation after compaction
 - `context_dashboard` — Launch the web dashboard (see [Web Dashboard](#web-dashboard))
 
 **Setup:**
