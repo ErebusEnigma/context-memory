@@ -255,6 +255,8 @@ class TestAutoSaveScript:
         import shutil
         isolated_script = tmp_path / "auto_save.py"
         shutil.copy2(AUTO_SAVE_SCRIPT, str(isolated_script))
+        # auto_save.py imports from db_utils at module level
+        shutil.copy2(os.path.join(SCRIPTS_DIR, "db_utils.py"), str(tmp_path / "db_utils.py"))
 
         result = subprocess.run(
             [sys.executable, str(isolated_script)],

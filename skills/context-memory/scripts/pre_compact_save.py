@@ -27,18 +27,10 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-
-def read_hook_input() -> Optional[dict]:
-    """Read the JSON payload from stdin. Return dict or None on failure."""
-    try:
-        if sys.stdin is None or sys.stdin.closed:
-            return None
-        raw = sys.stdin.read()
-        if not raw or not raw.strip():
-            return None
-        return json.loads(raw)
-    except (json.JSONDecodeError, OSError, ValueError):
-        return None
+try:
+    from .db_utils import extract_text_content, read_hook_input
+except ImportError:
+    from db_utils import extract_text_content, read_hook_input
 
 
 def parse_transcript_full(path: str) -> list[dict]:
@@ -71,7 +63,7 @@ def parse_transcript_full(path: str) -> list[dict]:
 
                 msg = entry.get("message", {})
                 raw_content = msg.get("content", "")
-                text = _extract_text_content(raw_content)
+                text = extract_text_content(raw_content)
                 if text:
                     messages.append({"role": entry_type, "content": text})
     except OSError:
@@ -79,28 +71,6 @@ def parse_transcript_full(path: str) -> list[dict]:
 
     return messages
 
-
-def _extract_text_content(content) -> str:
-    """
-    Extract plain text from a message's content field.
-
-    Handles both plain string content and the list-of-blocks format.
-    Keeps only "type": "text" blocks (skips tool_use/tool_result).
-    No truncation — full content is preserved.
-    """
-    if content is None:
-        return ""
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        parts = []
-        for block in content:
-            if isinstance(block, dict) and block.get("type") == "text":
-                text = block.get("text", "")
-                if text:
-                    parts.append(text)
-        return "\n".join(parts)
-    return ""
 
 
 def save_checkpoint(

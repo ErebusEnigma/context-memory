@@ -18,44 +18,18 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
-
-def read_hook_input() -> Optional[dict]:
-    """Read the JSON payload from stdin. Return dict or None on failure."""
-    try:
-        if sys.stdin is None or sys.stdin.closed:
-            return None
-        raw = sys.stdin.read()
-        if not raw or not raw.strip():
-            return None
-        return json.loads(raw)
-    except (json.JSONDecodeError, OSError, ValueError):
-        return None
+try:
+    from .db_utils import extract_text_content as _extract_text_content_full
+    from .db_utils import read_hook_input
+except ImportError:
+    from db_utils import extract_text_content as _extract_text_content_full
+    from db_utils import read_hook_input
 
 
 def extract_text_content(content) -> str:
-    """
-    Extract plain text from a message's content field.
-
-    Handles both plain string content and the list-of-blocks format
-    (keeps only "type": "text" blocks, skips tool_use/tool_result).
-    Truncates to 1000 chars.
-    """
-    if content is None:
-        return ""
-    if isinstance(content, str):
-        return content[:1000]
-    if isinstance(content, list):
-        parts = []
-        for block in content:
-            if isinstance(block, dict) and block.get("type") == "text":
-                text = block.get("text", "")
-                if text:
-                    parts.append(text)
-        joined = "\n".join(parts)
-        return joined[:1000]
-    return ""
+    """Extract plain text from a message's content field (truncated to 1000 chars)."""
+    return _extract_text_content_full(content, max_length=1000)
 
 
 def parse_transcript(path: str, max_messages: int = 15) -> list[dict]:

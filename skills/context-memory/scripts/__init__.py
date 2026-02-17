@@ -7,7 +7,7 @@ Database utilities for persistent, searchable context storage.
 __version__ = "1.3.0"
 
 from .db_init import get_stats, init_database, verify_schema
-from .db_prune import prune_sessions
+from .db_prune import prune_checkpoints, prune_sessions
 from .db_save import (
     save_code_snippet,
     save_full_session,
@@ -26,13 +26,16 @@ from .db_search import (
 )
 from .db_utils import (
     db_exists,
+    extract_text_content,
     format_fts_query,
     get_connection,
     get_db_path,
     get_session_count,
     hash_project_path,
+    read_hook_input,
     truncate_text,
 )
+from .pre_compact_save import save_checkpoint
 
 __all__ = [
     # Utils
@@ -43,6 +46,8 @@ __all__ = [
     'format_fts_query',
     'get_session_count',
     'truncate_text',
+    'read_hook_input',
+    'extract_text_content',
     # Init
     'init_database',
     'verify_schema',
@@ -63,4 +68,7 @@ __all__ = [
     'format_results_markdown',
     # Prune
     'prune_sessions',
+    'prune_checkpoints',
+    # Checkpoints
+    'save_checkpoint',
 ]

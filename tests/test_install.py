@@ -95,7 +95,7 @@ class TestInstallHooksUpgrade:
              patch("install.Path.home", return_value=Path("C:/Users/TestUser")):
             result = install.install_hooks()
 
-        assert result == "Hooks: updated stop hook in settings.json"
+        assert "Stop: updated" in result
         settings = json.loads(settings_path.read_text(encoding="utf-8"))
         actual_cmd = settings["hooks"]["Stop"][0]["hooks"][0]["command"]
         assert "~" not in actual_cmd
@@ -111,7 +111,7 @@ class TestInstallHooksUpgrade:
              patch("install.platform.system", return_value="Linux"):
             result = install.install_hooks()
 
-        assert result == "Hooks: already installed"
+        assert "Stop: already installed" in result
 
     def test_fresh_install_on_windows_expands_tilde(self, tmp_path):
         """Fresh install on Windows should write expanded path."""
@@ -123,7 +123,7 @@ class TestInstallHooksUpgrade:
              patch("install.Path.home", return_value=Path("C:/Users/TestUser")):
             result = install.install_hooks()
 
-        assert result == "Hooks: stop hook added to settings.json"
+        assert "Stop: added" in result
         settings = json.loads(settings_path.read_text(encoding="utf-8"))
         actual_cmd = settings["hooks"]["Stop"][0]["hooks"][0]["command"]
         assert "~" not in actual_cmd

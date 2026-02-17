@@ -82,11 +82,13 @@ def uninstall_commands(force: bool = False) -> str:
 def _hook_matches(command: str) -> bool:
     """Check if a hook command string is ours."""
     normalized = command.replace("\\", "/")
-    return "context-memory" in normalized and ("db_save.py" in normalized or "auto_save.py" in normalized)
+    return "context-memory" in normalized and (
+        "db_save.py" in normalized or "auto_save.py" in normalized or "pre_compact_save.py" in normalized
+    )
 
 
 def uninstall_hooks() -> str:
-    """Remove our hooks from ~/.claude/settings.json."""
+    """Remove our hooks (Stop, PreCompact, etc.) from ~/.claude/settings.json."""
     if not SETTINGS_PATH.exists():
         return "Hooks: settings.json not found"
 
@@ -97,31 +99,36 @@ def uninstall_hooks() -> str:
             return "Hooks: settings.json is malformed, skipped"
 
     hooks = settings.get("hooks", {})
-    stop_list = hooks.get("Stop", [])
+    if not hooks:
+        return "Hooks: no hooks found"
 
-    if not stop_list:
-        return "Hooks: no Stop hooks found"
+    removed_types = []
 
-    # Filter out matcher groups that contain our hook
-    original_count = len(stop_list)
-    filtered = []
-    for matcher_group in stop_list:
-        inner_hooks = matcher_group.get("hooks", [])
-        has_ours = any(
-            hook.get("type") == "command" and _hook_matches(hook.get("command", ""))
-            for hook in inner_hooks
-        )
-        if not has_ours:
-            filtered.append(matcher_group)
+    for hook_type in list(hooks.keys()):
+        type_list = hooks[hook_type]
+        if not isinstance(type_list, list):
+            continue
 
-    if len(filtered) == original_count:
+        original_count = len(type_list)
+        filtered = []
+        for matcher_group in type_list:
+            inner_hooks = matcher_group.get("hooks", [])
+            has_ours = any(
+                hook.get("type") == "command" and _hook_matches(hook.get("command", ""))
+                for hook in inner_hooks
+            )
+            if not has_ours:
+                filtered.append(matcher_group)
+
+        if len(filtered) < original_count:
+            removed_types.append(hook_type)
+            if filtered:
+                hooks[hook_type] = filtered
+            else:
+                del hooks[hook_type]
+
+    if not removed_types:
         return "Hooks: not installed"
-
-    # Clean up empty structures
-    if filtered:
-        hooks["Stop"] = filtered
-    else:
-        del hooks["Stop"]
 
     if hooks:
         settings["hooks"] = hooks
@@ -132,7 +139,7 @@ def uninstall_hooks() -> str:
         json.dump(settings, f, indent=2)
         f.write("\n")
 
-    return "Hooks: removed from settings.json"
+    return "Hooks: removed " + ", ".join(removed_types) + " from settings.json"
 
 
 MCP_CONFIG_PATH = CLAUDE_DIR / "mcp_servers.json"

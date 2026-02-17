@@ -52,6 +52,10 @@ Without it, every session is a blank slate. With it, Claude Code has a long-term
 - **Web dashboard** - Browser-based UI for browsing, searching, and analyzing sessions
 - **MCP server** - Six tools for programmatic access from any MCP-compatible client
 - **Database pruning** - Prune old sessions by age or count with dry-run preview
+- **Cross-platform** - Windows (CMD/PowerShell), macOS, and Linux
+- **Zero external dependencies** - Stdlib-only Python 3.8+ for core functionality
+- **Schema auto-migration** - Automatic upgrades (v1 through v4) on startup
+- **Session deduplication** - Auto-save skips when `/remember` was used recently
 
 ## Installation
 
@@ -90,7 +94,7 @@ This removes the skill, commands, hooks, and MCP server registration. Your saved
 - Python >= 3.8
 - SQLite with FTS5 support (included in Python's standard library)
 - MCP server (optional): Python >= 3.10 and `pip install mcp`
-- Web dashboard (optional): `pip install flask flask-cors`
+- Web dashboard (optional): `pip install context-memory[dashboard]` or `pip install flask flask-cors`
 
 ## Commands
 
@@ -226,7 +230,7 @@ The context-memory skill also activates on natural language:
 A browser-based UI for browsing, searching, and managing your stored sessions.
 
 ```bash
-pip install flask flask-cors
+pip install context-memory[dashboard]   # or: pip install flask flask-cors
 python skills/context-memory/scripts/dashboard.py
 ```
 

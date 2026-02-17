@@ -232,7 +232,7 @@ class TestUninstallHooks:
         with patch.object(uninstall, "SETTINGS_PATH", settings_path):
             result = uninstall.uninstall_hooks()
 
-        assert result == "Hooks: removed from settings.json"
+        assert "Hooks: removed Stop from settings.json" == result
         updated = json.loads(settings_path.read_text(encoding="utf-8"))
         # hooks key should be cleaned up entirely
         assert "hooks" not in updated
@@ -253,7 +253,7 @@ class TestUninstallHooks:
         with patch.object(uninstall, "SETTINGS_PATH", settings_path):
             result = uninstall.uninstall_hooks()
 
-        assert result == "Hooks: removed from settings.json"
+        assert "Hooks: removed Stop from settings.json" == result
         updated = json.loads(settings_path.read_text(encoding="utf-8"))
         assert len(updated["hooks"]["Stop"]) == 1
         assert "other/plugin" in updated["hooks"]["Stop"][0]["hooks"][0]["command"]
@@ -285,7 +285,7 @@ class TestUninstallHooks:
         with patch.object(uninstall, "SETTINGS_PATH", settings_path):
             result = uninstall.uninstall_hooks()
 
-        assert result == "Hooks: no Stop hooks found"
+        assert result == "Hooks: no hooks found"
 
     def test_not_installed(self, tmp_path):
         """Should report not installed when Stop hooks exist but none are ours."""
@@ -339,4 +339,4 @@ class TestUninstallHooks:
         with patch.object(uninstall, "SETTINGS_PATH", settings_path):
             result = uninstall.uninstall_hooks()
 
-        assert result == "Hooks: removed from settings.json"
+        assert "Hooks: removed Stop from settings.json" == result

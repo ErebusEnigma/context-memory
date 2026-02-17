@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 flask = pytest.importorskip("flask", reason="flask package not installed")
+pytest.importorskip("flask_cors", reason="flask-cors package not installed")
 
 import dashboard  # noqa: E402
 from db_init import init_database  # noqa: E402

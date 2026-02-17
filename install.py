@@ -90,7 +90,9 @@ def install_commands() -> str:
 def _hook_matches(command: str) -> bool:
     """Check if a hook command string is ours (contains context-memory AND a known script)."""
     normalized = command.replace("\\", "/")
-    return "context-memory" in normalized and ("db_save.py" in normalized or "auto_save.py" in normalized)
+    return "context-memory" in normalized and (
+        "db_save.py" in normalized or "auto_save.py" in normalized or "pre_compact_save.py" in normalized
+    )
 
 
 def _platform_hook_command(command: str) -> str:
@@ -102,24 +104,24 @@ def _platform_hook_command(command: str) -> str:
 
 
 def install_hooks() -> str:
-    """Merge our stop hook into ~/.claude/settings.json."""
+    """Merge our hooks (Stop, PreCompact, etc.) into ~/.claude/settings.json."""
     if not HOOKS_SRC.exists():
         return "Hooks: hooks.json not found, skipped"
 
-    # Read our hook definition
+    # Read our hook definitions
     with open(HOOKS_SRC, encoding="utf-8") as f:
         hooks_data = json.load(f)
 
-    # Extract our matcher group for Stop
-    our_stop_matchers = hooks_data.get("hooks", {}).get("Stop", [])
-    if not our_stop_matchers:
-        return "Hooks: no Stop hooks defined in hooks.json, skipped"
+    all_hook_types = hooks_data.get("hooks", {})
+    if not all_hook_types:
+        return "Hooks: no hooks defined in hooks.json, skipped"
 
     # Apply platform-specific transformations (e.g., expand ~ on Windows)
-    for matcher_group in our_stop_matchers:
-        for hook in matcher_group.get("hooks", []):
-            if hook.get("type") == "command":
-                hook["command"] = _platform_hook_command(hook["command"])
+    for hook_type, matcher_groups in all_hook_types.items():
+        for matcher_group in matcher_groups:
+            for hook in matcher_group.get("hooks", []):
+                if hook.get("type") == "command":
+                    hook["command"] = _platform_hook_command(hook["command"])
 
     # Load existing settings
     settings = {}
@@ -131,31 +133,38 @@ def install_hooks() -> str:
                 return "Hooks: settings.json is malformed, skipped (fix manually)"
 
     hooks = settings.setdefault("hooks", {})
-    stop_list = hooks.setdefault("Stop", [])
+    results = []
 
-    # Check for existing context-memory hook
-    our_command = our_stop_matchers[0]["hooks"][0]["command"]
-    for matcher_group in stop_list:
-        inner_hooks = matcher_group.get("hooks", [])
-        for hook in inner_hooks:
-            if hook.get("type") == "command" and _hook_matches(hook.get("command", "")):
-                if hook["command"] == our_command:
-                    return "Hooks: already installed"
-                # Update outdated hook (e.g., ~ not expanded, old command format)
-                hook["command"] = our_command
-                with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
-                    json.dump(settings, f, indent=2)
-                    f.write("\n")
-                return "Hooks: updated stop hook in settings.json"
+    for hook_type, our_matchers in all_hook_types.items():
+        type_list = hooks.setdefault(hook_type, [])
 
-    # Append our matcher group(s)
-    stop_list.extend(our_stop_matchers)
+        # Check for existing context-memory hook of this type
+        our_command = our_matchers[0]["hooks"][0]["command"]
+        found_existing = False
+        for matcher_group in type_list:
+            inner_hooks = matcher_group.get("hooks", [])
+            for hook in inner_hooks:
+                if hook.get("type") == "command" and _hook_matches(hook.get("command", "")):
+                    if hook["command"] == our_command:
+                        results.append(f"{hook_type}: already installed")
+                    else:
+                        hook["command"] = our_command
+                        results.append(f"{hook_type}: updated")
+                    found_existing = True
+                    break
+            if found_existing:
+                break
 
+        if not found_existing:
+            type_list.extend(our_matchers)
+            results.append(f"{hook_type}: added")
+
+    # Save settings.json once at the end
     with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
         json.dump(settings, f, indent=2)
         f.write("\n")
 
-    return "Hooks: stop hook added to settings.json"
+    return "Hooks: " + ", ".join(results)
 
 
 def install_db() -> str:

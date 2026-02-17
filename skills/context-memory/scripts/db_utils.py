@@ -144,3 +144,53 @@ def truncate_text(text: str, max_length: int = 500) -> str:
     if len(text) <= max_length:
         return text
     return text[:max_length - 3] + "..."
+
+
+def read_hook_input():
+    """Read the JSON payload from stdin. Return dict or None on failure.
+
+    Shared by auto_save.py and pre_compact_save.py hook handlers.
+    """
+    import json
+    import sys
+    try:
+        if sys.stdin is None or sys.stdin.closed:
+            return None
+        raw = sys.stdin.read()
+        if not raw or not raw.strip():
+            return None
+        return json.loads(raw)
+    except (json.JSONDecodeError, OSError, ValueError):
+        return None
+
+
+def extract_text_content(content, max_length=None):
+    """
+    Extract plain text from a message's content field.
+
+    Handles both plain string content and the list-of-blocks format
+    (keeps only "type": "text" blocks, skips tool_use/tool_result).
+
+    Args:
+        content: The message content (str, list of blocks, or None).
+        max_length: If set, truncate the result to this many characters.
+                    None means no truncation (full text returned).
+    """
+    if content is None:
+        result = ""
+    elif isinstance(content, str):
+        result = content
+    elif isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "text":
+                text = block.get("text", "")
+                if text:
+                    parts.append(text)
+        result = "\n".join(parts)
+    else:
+        result = ""
+
+    if max_length is not None:
+        return result[:max_length]
+    return result

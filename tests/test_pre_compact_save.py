@@ -14,8 +14,8 @@ SCRIPTS_DIR = os.path.join(
 )
 PRE_COMPACT_SCRIPT = os.path.join(SCRIPTS_DIR, "pre_compact_save.py")
 
+from db_utils import extract_text_content  # noqa: E402
 from pre_compact_save import (  # noqa: E402
-    _extract_text_content,
     parse_transcript_full,
     read_hook_input,
     save_checkpoint,
@@ -23,12 +23,12 @@ from pre_compact_save import (  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
-# Unit tests — _extract_text_content (no truncation variant)
+# Unit tests — extract_text_content (no max_length = no truncation)
 # ---------------------------------------------------------------------------
 class TestExtractTextContentFull:
     def test_string_input_no_truncation(self):
         long_text = "a" * 5000
-        assert _extract_text_content(long_text) == long_text
+        assert extract_text_content(long_text) == long_text
 
     def test_list_of_blocks_no_truncation(self):
         blocks = [
@@ -36,17 +36,17 @@ class TestExtractTextContentFull:
             {"type": "tool_use", "name": "bash"},
             {"type": "text", "text": "y" * 3000},
         ]
-        result = _extract_text_content(blocks)
+        result = extract_text_content(blocks)
         assert len(result) == 6001  # 3000 + \n + 3000
 
     def test_empty_inputs(self):
-        assert _extract_text_content(None) == ""
-        assert _extract_text_content("") == ""
-        assert _extract_text_content([]) == ""
+        assert extract_text_content(None) == ""
+        assert extract_text_content("") == ""
+        assert extract_text_content([]) == ""
 
     def test_non_string_non_list(self):
-        assert _extract_text_content(42) == ""
-        assert _extract_text_content({"key": "val"}) == ""
+        assert extract_text_content(42) == ""
+        assert extract_text_content({"key": "val"}) == ""
 
 
 # ---------------------------------------------------------------------------

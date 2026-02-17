@@ -106,6 +106,31 @@ CREATE TABLE code_snippets (
 - `idx_code_snippets_session_id`
 - `idx_code_snippets_language`
 
+### context_checkpoints
+
+Full conversation snapshots saved before context compaction (added in schema v4).
+Uses `session_id TEXT` (not a foreign key) to link to sessions logically, since
+checkpoints may be created for sessions not yet saved to the sessions table.
+
+```sql
+CREATE TABLE context_checkpoints (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,              -- Session identifier (logical link to sessions.session_id)
+    project_path TEXT,                     -- Full path to project directory
+    project_hash TEXT,                     -- SHA256 hash of normalized path (first 16 chars)
+    checkpoint_number INTEGER NOT NULL DEFAULT 1,  -- Auto-incrementing per session_id
+    trigger_type TEXT NOT NULL DEFAULT 'auto',     -- 'auto' or 'manual'
+    messages TEXT NOT NULL,                -- JSON blob of all messages
+    message_count INTEGER NOT NULL DEFAULT 0,      -- Number of messages in the blob
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**Indexes**:
+- `idx_checkpoints_session_id` - Find checkpoints by session
+- `idx_checkpoints_project_hash` - Project-scoped checkpoint queries
+- `idx_checkpoints_created_at` - Recent checkpoints first (DESC)
+
 ## FTS5 Virtual Tables
 
 ### summaries_fts
@@ -341,3 +366,14 @@ DELETE FROM sessions WHERE id = ?;
   "custom_field": "value"
 }
 ```
+
+## Schema Migrations
+
+The database auto-migrates forward on startup. Current version: **4**.
+
+| Version | Migration | Description |
+|---------|-----------|-------------|
+| 1 | (initial) | Core tables: sessions, messages, summaries, topics, code_snippets + FTS5 |
+| 2 | v1 → v2 | Add `schema_version` table for migration tracking |
+| 3 | v2 → v3 | Replace `sessions_updated` trigger with WHEN-guarded version |
+| 4 | v3 → v4 | Add `context_checkpoints` table + indexes for pre-compact saves |
