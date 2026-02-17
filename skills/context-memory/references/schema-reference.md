@@ -131,6 +131,11 @@ CREATE TABLE context_checkpoints (
 - `idx_checkpoints_project_hash` - Project-scoped checkpoint queries
 - `idx_checkpoints_created_at` - Recent checkpoints first (DESC)
 
+**Cleanup:** Checkpoint rows must be deleted when their parent session is removed.
+Unlike the FK-linked child tables (`messages`, `summaries`, `topics`, `code_snippets`),
+`context_checkpoints` uses `session_id TEXT` as its link column. Both `prune_sessions()`
+in `db_prune.py` and `api_delete_session()` in `dashboard.py` handle this explicitly.
+
 ## FTS5 Virtual Tables
 
 ### summaries_fts

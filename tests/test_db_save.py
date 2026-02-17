@@ -122,6 +122,31 @@ class TestSaveSummary:
         id2 = db_save.save_summary(sid, brief="Updated")
         assert id1 == id2
 
+    def test_update_summary_without_brief(self, isolated_db):
+        """Updating a summary without providing brief should preserve existing brief."""
+        db_init.init_database()
+        sid = db_save.save_session("test-session")
+        db_save.save_summary(sid, brief="Original summary", outcome="partial")
+
+        # Update only outcome — brief should be preserved
+        db_save.save_summary(sid, outcome="success")
+
+        with db_utils.get_connection(readonly=True) as conn:
+            row = conn.execute(
+                "SELECT brief, outcome FROM summaries WHERE session_id = ?", (sid,)
+            ).fetchone()
+            assert row["brief"] == "Original summary"
+            assert row["outcome"] == "success"
+
+    def test_insert_summary_without_brief_raises(self, isolated_db):
+        """Creating a new summary without brief should raise ValueError."""
+        import pytest
+        db_init.init_database()
+        sid = db_save.save_session("test-session")
+
+        with pytest.raises(ValueError, match="brief is required"):
+            db_save.save_summary(sid, outcome="success")
+
     def test_save_summary_with_problems_and_user_note(self, isolated_db):
         """problems_solved and user_note should be stored correctly."""
         db_init.init_database()

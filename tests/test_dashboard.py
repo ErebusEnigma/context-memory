@@ -244,6 +244,20 @@ class TestApiUpdateSession:
         assert detail["brief"] is not None
         assert detail["brief"] != ""
 
+    def test_update_user_note_without_brief(self, client, seeded_db):
+        """Updating user_note alone must not crash."""
+        list_resp = client.get("/api/sessions")
+        sid = list_resp.get_json()["sessions"][0]["id"]
+
+        resp = client.put(
+            f"/api/sessions/{sid}",
+            json={"user_note": "This was a good session"},
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert "summary" in data["updated"]
+        assert "user_note" in data["updated"]["summary"]
+
     def test_no_db(self, client, isolated_db):
         resp = client.put("/api/sessions/1", json={"brief": "x"})
         assert resp.status_code == 404

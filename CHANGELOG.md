@@ -7,9 +7,13 @@
 - `uninstall.py`: generalized hook removal to iterate all hook type keys, not just Stop
 - `_hook_matches()` in both install/uninstall: now recognizes `pre_compact_save.py` alongside `auto_save.py` and `db_save.py`
 - `tests/test_dashboard.py`: added `pytest.importorskip("flask_cors")` guard to prevent import errors when flask-cors is not installed
+- `save_summary()`: made `brief` optional for updates (COALESCE preserves existing value); still required for new summaries (raises ValueError). Fixes dashboard PUT crash when updating a single summary field without `brief`.
+- `dashboard.py`: `api_delete_session()` now cleans up `context_checkpoints` (linked by TEXT `session_id`) alongside the FK child tables. Previously, deleting a session via the dashboard left orphaned checkpoint rows.
 - `search_tier1()`: fixed cross-table BM25 score contamination — topic/snippet BM25 scores are no longer mixed with summary scores in the final sort. Summary BM25 is now the sole ranking signal with a fixed boost per additional matching source (topic/snippet). Non-summary matches are bucketed separately after summary matches.
 
 ### Changed
+- `test_dashboard.py`: added regression tests for partial summary updates (outcome/user_note without brief) and checkpoint cleanup on session delete
+- `test_db_save.py`: added tests for save_summary update-without-brief and insert-without-brief-raises
 - Extracted shared `read_hook_input()` and `extract_text_content(content, max_length=None)` to `db_utils.py`, replacing duplicate implementations in `auto_save.py` and `pre_compact_save.py`
 - `__init__.py`: added exports for `save_checkpoint`, `prune_checkpoints`, `read_hook_input`, and `extract_text_content`
 - Comprehensive README rewrite: added Architecture section, CI/test badges, CLI Tools section, Testing section; expanded Features, Installation, How It Works, and Web Dashboard sections to match actual codebase capabilities
