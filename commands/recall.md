@@ -1,6 +1,6 @@
 ---
 description: "Search past sessions stored in context memory"
-argument-hint: "<query> [--project] [--detailed] [--limit N]"
+argument-hint: "<query> [--project] [--detailed] [--limit N] [--format json|markdown]"
 ---
 
 # /recall Command
@@ -20,6 +20,7 @@ Search past sessions stored in context memory.
 - `--project`: Limit search to current project only
 - `--detailed`: Include full message content and code snippets
 - `--limit N`: Maximum number of results (default: 10)
+- `--format`: Output format: `json` or `markdown` (default: markdown)
 
 ## Examples
 

@@ -325,6 +325,7 @@ PRAGMA journal_mode=WAL;      -- Write-Ahead Logging for concurrency
 PRAGMA synchronous=NORMAL;    -- Balance safety/performance
 PRAGMA cache_size=-64000;     -- 64MB cache
 PRAGMA temp_store=MEMORY;     -- In-memory temp tables
+PRAGMA foreign_keys=ON;       -- Enforce foreign key constraints
 ```
 
 ### BM25 Ranking

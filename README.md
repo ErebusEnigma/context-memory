@@ -4,7 +4,7 @@
 [![Python](https://img.shields.io/badge/Python-%3E%3D3.8-blue.svg)](https://www.python.org/)
 [![Latest Release](https://img.shields.io/github/v/release/ErebusEnigma/context-memory)](https://github.com/ErebusEnigma/context-memory/releases)
 [![CI](https://github.com/ErebusEnigma/context-memory/actions/workflows/ci.yml/badge.svg)](https://github.com/ErebusEnigma/context-memory/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-351_passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-364_passing-brightgreen.svg)](tests/)
 
 Persistent, searchable context storage across Claude Code sessions using SQLite + FTS5.
 
@@ -74,7 +74,7 @@ Without it, every session is a blank slate. With it, Claude Code has a long-term
 - **Zero external dependencies** - Stdlib-only Python 3.8+ for core functionality
 - **Schema auto-migration** - Forward-only automatic upgrades (v1 through v4) on first DB access after upgrade, preserving all existing data
 - **SQLite performance tuning** - WAL mode, 64MB cache, `PRAGMA synchronous=NORMAL`, `PRAGMA temp_store=MEMORY`
-- **351 tests across 12 modules** - CI runs on Python 3.8, 3.11, and 3.12 with ruff linting
+- **364 tests across 12 modules** - CI runs on Python 3.8, 3.11, and 3.12 with ruff linting
 
 ## Architecture
 
@@ -106,7 +106,7 @@ skills/context-memory/            # Skill definition (SKILL.md)
       js/views/                   # Search, sessions, detail, analytics, settings
   references/
     schema-reference.md           # Full database schema reference
-tests/                            # 351 tests across 12 modules
+tests/                            # 364 tests across 12 modules
 .github/workflows/ci.yml          # CI: lint (ruff) + test (Python 3.8, 3.11, 3.12)
 ```
 
@@ -342,31 +342,31 @@ All core scripts have full argparse CLIs and can be run directly:
 
 **`db_save.py`** — Save sessions from the command line:
 ```bash
-python scripts/db_save.py --session-id abc123 --project-path /my/project \
+python skills/context-memory/scripts/db_save.py --session-id abc123 --project-path /my/project \
     --brief "Fixed auth bug" --topics "auth,jwt" --outcome success
-python scripts/db_save.py --json session.json    # or --json - for stdin
-python scripts/db_save.py --auto --dedup-window 5  # auto-save mode with dedup
+python skills/context-memory/scripts/db_save.py --json session.json    # or --json - for stdin
+python skills/context-memory/scripts/db_save.py --auto --dedup-window 5  # auto-save mode with dedup
 ```
 
 **`db_search.py`** — Search from the command line:
 ```bash
-python scripts/db_search.py "authentication" --project /my/project --format json
-python scripts/db_search.py "CORS" --detailed --limit 5
+python skills/context-memory/scripts/db_search.py "authentication" --project /my/project --format json
+python skills/context-memory/scripts/db_search.py "CORS" --detailed --limit 5
 ```
 
 **`db_prune.py`** — Prune old data:
 ```bash
-python scripts/db_prune.py --max-sessions 100 --dry-run
-python scripts/db_prune.py --max-age 90          # delete sessions older than 90 days
-python scripts/db_prune.py --prune-checkpoints --max-checkpoints-per-session 3
+python skills/context-memory/scripts/db_prune.py --max-sessions 100 --dry-run
+python skills/context-memory/scripts/db_prune.py --max-age 90          # delete sessions older than 90 days
+python skills/context-memory/scripts/db_prune.py --prune-checkpoints --max-checkpoints-per-session 3
 ```
 
 **`db_init.py`** — Database management:
 ```bash
-python scripts/db_init.py              # initialize database
-python scripts/db_init.py --verify     # verify schema integrity
-python scripts/db_init.py --stats      # show database statistics
-python scripts/db_init.py --force      # force recreation
+python skills/context-memory/scripts/db_init.py              # initialize database
+python skills/context-memory/scripts/db_init.py --verify     # verify schema integrity
+python skills/context-memory/scripts/db_init.py --stats      # show database statistics
+python skills/context-memory/scripts/db_init.py --force      # force recreation
 ```
 
 ## Database Management
@@ -381,7 +381,7 @@ python skills/context-memory/scripts/db_init.py --stats
 
 ## Testing
 
-The project has 351 tests across 12 test modules. CI runs on Python 3.8, 3.11, and 3.12 via GitHub Actions with ruff linting.
+The project has 364 tests across 12 test modules. CI runs on Python 3.8, 3.11, and 3.12 via GitHub Actions with ruff linting.
 
 ```bash
 python -m pytest tests/ -v    # run all tests
