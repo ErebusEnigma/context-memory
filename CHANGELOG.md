@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.3.1] - 2026-02-17
+
+### Fixed
+- `install.py`: generalized hook installation to loop over all hook types (Stop, PreCompact, etc.) instead of hardcoding Stop-only
+- `uninstall.py`: generalized hook removal to iterate all hook type keys, not just Stop
+- `_hook_matches()` in both install/uninstall: now recognizes `pre_compact_save.py` alongside `auto_save.py` and `db_save.py`
+- `tests/test_dashboard.py`: added `pytest.importorskip("flask_cors")` guard to prevent import errors when flask-cors is not installed
+
+### Changed
+- Extracted shared `read_hook_input()` and `extract_text_content(content, max_length=None)` to `db_utils.py`, replacing duplicate implementations in `auto_save.py` and `pre_compact_save.py`
+- `__init__.py`: added exports for `save_checkpoint`, `prune_checkpoints`, `read_hook_input`, and `extract_text_content`
+- Comprehensive README rewrite: added Architecture section, CI/test badges, CLI Tools section, Testing section; expanded Features, Installation, How It Works, and Web Dashboard sections to match actual codebase capabilities
+- `schema-reference.md`: added `context_checkpoints` table documentation and Schema Migrations section
+
 ## [1.3.0] - 2026-02-17
 
 ### Added

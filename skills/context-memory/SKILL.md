@@ -11,7 +11,7 @@ compatibility: "Requires Python >= 3.8 with sqlite3 FTS5 support (included in st
 allowed-tools: "Bash(python:*)"
 metadata:
   author: "ErebusEnigma"
-  version: "1.3.0"
+  version: "1.3.1"
 ---
 
 # Context Memory Skill
