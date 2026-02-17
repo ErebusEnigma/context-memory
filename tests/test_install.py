@@ -181,3 +181,247 @@ class TestInstallMcp:
             result = install.install_mcp()
 
         assert "not installed" in result
+
+
+class TestInstallCommands:
+    def test_fresh_install(self, tmp_path):
+        """Command files should be installed when destination doesn't exist."""
+        src = tmp_path / "src_commands"
+        src.mkdir()
+        (src / "remember.md").write_text("# remember", encoding="utf-8")
+        (src / "recall.md").write_text("# recall", encoding="utf-8")
+
+        dst = tmp_path / "commands"
+        dst.mkdir()
+
+        with patch.object(install, "COMMANDS_SRC", src), \
+             patch.object(install, "COMMANDS_DST", dst):
+            result = install.install_commands()
+
+        assert "remember.md: installed" in result
+        assert "recall.md: installed" in result
+        assert (dst / "remember.md").read_text(encoding="utf-8") == "# remember"
+        assert (dst / "recall.md").read_text(encoding="utf-8") == "# recall"
+
+    def test_already_up_to_date(self, tmp_path):
+        """Identical files should be reported as up to date."""
+        src = tmp_path / "src_commands"
+        src.mkdir()
+        (src / "remember.md").write_text("# same content", encoding="utf-8")
+        (src / "recall.md").write_text("# recall content", encoding="utf-8")
+
+        dst = tmp_path / "commands"
+        dst.mkdir()
+        (dst / "remember.md").write_text("# same content", encoding="utf-8")
+        (dst / "recall.md").write_text("# recall content", encoding="utf-8")
+
+        with patch.object(install, "COMMANDS_SRC", src), \
+             patch.object(install, "COMMANDS_DST", dst):
+            result = install.install_commands()
+
+        assert "already up to date" in result
+
+    def test_creates_backup_on_update(self, tmp_path):
+        """Changed files should be backed up before overwriting."""
+        src = tmp_path / "src_commands"
+        src.mkdir()
+        (src / "remember.md").write_text("# new version", encoding="utf-8")
+
+        dst = tmp_path / "commands"
+        dst.mkdir()
+        (dst / "remember.md").write_text("# old version", encoding="utf-8")
+
+        with patch.object(install, "COMMANDS_SRC", src), \
+             patch.object(install, "COMMANDS_DST", dst):
+            result = install.install_commands()
+
+        assert "updated" in result
+        assert "backup" in result
+        assert (dst / "remember.md").read_text(encoding="utf-8") == "# new version"
+        assert (dst / "remember.md.bak").exists()
+        assert (dst / "remember.md.bak").read_text(encoding="utf-8") == "# old version"
+
+    def test_source_not_found(self, tmp_path):
+        """Missing source files should be skipped gracefully."""
+        src = tmp_path / "src_commands"
+        src.mkdir()
+        # Only create one of the two expected files
+
+        dst = tmp_path / "commands"
+        dst.mkdir()
+
+        with patch.object(install, "COMMANDS_SRC", src), \
+             patch.object(install, "COMMANDS_DST", dst):
+            result = install.install_commands()
+
+        assert "source not found" in result
+
+
+class TestInstallDb:
+    def test_skips_existing_db(self, tmp_path):
+        """install_db() should skip when database already exists."""
+        db_dir = tmp_path / "context-memory"
+        db_dir.mkdir()
+        (db_dir / "context.db").write_bytes(b"fake db")
+
+        with patch.object(install, "DB_DIR", db_dir):
+            result = install.install_db()
+
+        assert result == "Database: already exists"
+
+    def test_init_success(self, tmp_path):
+        """install_db() should report success when db_init.py succeeds."""
+        db_dir = tmp_path / "context-memory"
+        db_dir.mkdir()
+
+        with patch.object(install, "DB_DIR", db_dir), \
+             patch("subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=[], returncode=0, stdout="", stderr=""
+            )
+            result = install.install_db()
+
+        assert result == "Database: initialized"
+
+    def test_init_failure(self, tmp_path):
+        """install_db() should report failure when db_init.py fails."""
+        db_dir = tmp_path / "context-memory"
+        db_dir.mkdir()
+
+        with patch.object(install, "DB_DIR", db_dir), \
+             patch("subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=[], returncode=1, stdout="", stderr="Schema error"
+            )
+            result = install.install_db()
+
+        assert "init failed" in result
+        assert "Schema error" in result
+
+
+class TestInstallSkill:
+    def test_copies_skill_directory(self, tmp_path):
+        """install_skill() should copy the skill directory to the destination."""
+        src = tmp_path / "src" / "skills" / "context-memory"
+        src.mkdir(parents=True)
+        (src / "SKILL.md").write_text("# Skill", encoding="utf-8")
+        scripts = src / "scripts"
+        scripts.mkdir()
+        (scripts / "db_init.py").write_text("# init", encoding="utf-8")
+
+        dst = tmp_path / "dst" / "skills" / "context-memory"
+
+        with patch.object(install, "SKILL_SRC", src), \
+             patch.object(install, "SKILL_DST", dst):
+            result = install.install_skill(symlink=False)
+
+        assert result == "Skill copied"
+        assert dst.exists()
+        assert (dst / "SKILL.md").exists()
+        assert (dst / "scripts" / "db_init.py").exists()
+
+    def test_creates_parent_directories(self, tmp_path):
+        """install_skill() should create parent dirs if they don't exist."""
+        src = tmp_path / "src" / "skills" / "context-memory"
+        src.mkdir(parents=True)
+        (src / "SKILL.md").write_text("# Skill", encoding="utf-8")
+
+        dst = tmp_path / "deep" / "nested" / "skills" / "context-memory"
+
+        with patch.object(install, "SKILL_SRC", src), \
+             patch.object(install, "SKILL_DST", dst):
+            result = install.install_skill(symlink=False)
+
+        assert result == "Skill copied"
+        assert dst.exists()
+
+    def test_overwrites_existing_directory(self, tmp_path):
+        """install_skill() should remove and replace an existing skill directory."""
+        src = tmp_path / "src" / "skills" / "context-memory"
+        src.mkdir(parents=True)
+        (src / "SKILL.md").write_text("# New version", encoding="utf-8")
+
+        dst = tmp_path / "dst" / "skills" / "context-memory"
+        dst.mkdir(parents=True)
+        (dst / "SKILL.md").write_text("# Old version", encoding="utf-8")
+        (dst / "stale_file.txt").write_text("should be removed", encoding="utf-8")
+
+        with patch.object(install, "SKILL_SRC", src), \
+             patch.object(install, "SKILL_DST", dst):
+            result = install.install_skill(symlink=False)
+
+        assert result == "Skill copied"
+        assert (dst / "SKILL.md").read_text(encoding="utf-8") == "# New version"
+        assert not (dst / "stale_file.txt").exists()
+
+    def test_symlink_mode(self, tmp_path):
+        """install_skill(symlink=True) should create a symlink."""
+        src = tmp_path / "src" / "skills" / "context-memory"
+        src.mkdir(parents=True)
+        (src / "SKILL.md").write_text("# Skill", encoding="utf-8")
+
+        dst = tmp_path / "dst" / "skills" / "context-memory"
+
+        with patch.object(install, "SKILL_SRC", src), \
+             patch.object(install, "SKILL_DST", dst):
+            result = install.install_skill(symlink=True)
+
+        assert result == "Skill symlinked"
+        assert dst.is_symlink()
+        assert dst.resolve() == src.resolve()
+
+    def test_symlink_replaces_existing_symlink(self, tmp_path):
+        """install_skill(symlink=True) should replace an existing symlink."""
+        old_target = tmp_path / "old_target"
+        old_target.mkdir()
+
+        src = tmp_path / "src" / "skills" / "context-memory"
+        src.mkdir(parents=True)
+
+        dst = tmp_path / "dst" / "skills" / "context-memory"
+        dst.parent.mkdir(parents=True)
+        dst.symlink_to(old_target, target_is_directory=True)
+
+        with patch.object(install, "SKILL_SRC", src), \
+             patch.object(install, "SKILL_DST", dst):
+            result = install.install_skill(symlink=True)
+
+        assert result == "Skill symlinked"
+        assert dst.is_symlink()
+        assert dst.resolve() == src.resolve()
+
+    def test_symlink_replaces_existing_directory(self, tmp_path):
+        """install_skill(symlink=True) should remove an existing directory and create symlink."""
+        src = tmp_path / "src" / "skills" / "context-memory"
+        src.mkdir(parents=True)
+
+        dst = tmp_path / "dst" / "skills" / "context-memory"
+        dst.mkdir(parents=True)
+        (dst / "old_file.txt").write_text("old", encoding="utf-8")
+
+        with patch.object(install, "SKILL_SRC", src), \
+             patch.object(install, "SKILL_DST", dst):
+            result = install.install_skill(symlink=True)
+
+        assert result == "Skill symlinked"
+        assert dst.is_symlink()
+
+    def test_ignores_pycache(self, tmp_path):
+        """install_skill() should not copy __pycache__ or .pyc files."""
+        src = tmp_path / "src" / "skills" / "context-memory"
+        src.mkdir(parents=True)
+        (src / "SKILL.md").write_text("# Skill", encoding="utf-8")
+        pycache = src / "__pycache__"
+        pycache.mkdir()
+        (pycache / "module.cpython-311.pyc").write_bytes(b"\x00")
+        (src / "old.pyc").write_bytes(b"\x00")
+
+        dst = tmp_path / "dst" / "skills" / "context-memory"
+
+        with patch.object(install, "SKILL_SRC", src), \
+             patch.object(install, "SKILL_DST", dst):
+            install.install_skill(symlink=False)
+
+        assert (dst / "SKILL.md").exists()
+        assert not (dst / "__pycache__").exists()
+        assert not (dst / "old.pyc").exists()

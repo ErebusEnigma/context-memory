@@ -12,7 +12,7 @@ SCRIPTS_DIR = os.path.join(
 )
 AUTO_SAVE_SCRIPT = os.path.join(SCRIPTS_DIR, "auto_save.py")
 
-from auto_save import build_brief, extract_text_content, parse_transcript  # noqa: E402
+from auto_save import build_brief, extract_text_content, parse_transcript, read_hook_input  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -44,6 +44,56 @@ class TestExtractTextContent:
         assert extract_text_content("") == ""
         assert extract_text_content(None) == ""
         assert extract_text_content([]) == ""
+
+    def test_non_string_non_list_returns_empty(self):
+        """Non-string, non-list types (int, dict) should return empty string."""
+        assert extract_text_content(42) == ""
+        assert extract_text_content({"key": "value"}) == ""
+        assert extract_text_content(True) == ""
+
+
+# ---------------------------------------------------------------------------
+# Unit tests — read_hook_input
+# ---------------------------------------------------------------------------
+class TestReadHookInput:
+    def test_valid_json(self, monkeypatch):
+        """Valid JSON from stdin should be parsed."""
+        import io
+        payload = json.dumps({"session_id": "test-123", "cwd": "/tmp"})
+        monkeypatch.setattr("sys.stdin", io.StringIO(payload))
+        result = read_hook_input()
+        assert result == {"session_id": "test-123", "cwd": "/tmp"}
+
+    def test_empty_stdin(self, monkeypatch):
+        """Empty stdin should return None."""
+        import io
+        monkeypatch.setattr("sys.stdin", io.StringIO(""))
+        assert read_hook_input() is None
+
+    def test_whitespace_only_stdin(self, monkeypatch):
+        """Whitespace-only stdin should return None."""
+        import io
+        monkeypatch.setattr("sys.stdin", io.StringIO("   \n  "))
+        assert read_hook_input() is None
+
+    def test_invalid_json(self, monkeypatch):
+        """Invalid JSON should return None (not raise)."""
+        import io
+        monkeypatch.setattr("sys.stdin", io.StringIO("{bad json"))
+        assert read_hook_input() is None
+
+    def test_closed_stdin(self, monkeypatch):
+        """Closed stdin should return None."""
+        import io
+        closed_stream = io.StringIO("")
+        closed_stream.close()
+        monkeypatch.setattr("sys.stdin", closed_stream)
+        assert read_hook_input() is None
+
+    def test_none_stdin(self, monkeypatch):
+        """None stdin should return None."""
+        monkeypatch.setattr("sys.stdin", None)
+        assert read_hook_input() is None
 
 
 # ---------------------------------------------------------------------------
@@ -98,6 +148,36 @@ class TestParseTranscript:
         assert len(msgs) == 2
         assert msgs[0]["role"] == "user"
         assert msgs[1]["role"] == "assistant"
+
+    def test_malformed_json_lines_skipped(self, tmp_path):
+        """Lines with invalid JSON should be silently skipped."""
+        transcript = tmp_path / "transcript.jsonl"
+        content = (
+            json.dumps({"type": "user", "message": {"content": "first"}}) + "\n"
+            + "this is not valid json\n"
+            + "{also bad\n"
+            + json.dumps({"type": "assistant", "message": {"content": "second"}}) + "\n"
+        )
+        transcript.write_text(content, encoding="utf-8")
+        msgs = parse_transcript(str(transcript))
+        assert len(msgs) == 2
+        assert msgs[0]["content"] == "first"
+        assert msgs[1]["content"] == "second"
+
+    def test_empty_lines_skipped(self, tmp_path):
+        """Blank lines interspersed in transcript should be skipped."""
+        transcript = tmp_path / "transcript.jsonl"
+        content = (
+            "\n"
+            + json.dumps({"type": "user", "message": {"content": "hello"}}) + "\n"
+            + "\n"
+            + "   \n"
+            + json.dumps({"type": "assistant", "message": {"content": "world"}}) + "\n"
+            + "\n"
+        )
+        transcript.write_text(content, encoding="utf-8")
+        msgs = parse_transcript(str(transcript))
+        assert len(msgs) == 2
 
     def test_list_content_blocks(self, tmp_path):
         transcript = tmp_path / "transcript.jsonl"

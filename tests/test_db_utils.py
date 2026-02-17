@@ -1,5 +1,7 @@
 """Tests for database utilities."""
 
+from unittest.mock import patch
+
 import db_utils
 
 
@@ -19,6 +21,29 @@ class TestHashProjectPath:
         h2 = db_utils.hash_project_path("/tmp/project-b")
         assert h1 != h2
 
+    def test_msys2_path_normalized_on_windows(self):
+        """MSYS2-style /c/Users/... should be normalized to C:\\ on Windows."""
+        with patch.object(db_utils.platform, "system", return_value="Windows"), \
+             patch.object(db_utils.os.path, "abspath", return_value="C:\\c\\Users\\dev\\project"), \
+             patch.object(db_utils.os.path, "normpath", return_value="C:\\c\\Users\\dev\\project"):
+            result = db_utils.hash_project_path("/c/Users/dev/project")
+        # Should produce a consistent hash (just verify it's a valid hex string)
+        assert isinstance(result, str)
+        assert len(result) == 16
+
+    def test_windows_case_insensitive(self):
+        """On Windows, paths should be case-insensitive for hashing."""
+        with patch.object(db_utils.platform, "system", return_value="Windows"):
+            h1 = db_utils.hash_project_path("C:\\Users\\Dev\\Project")
+            h2 = db_utils.hash_project_path("C:\\Users\\dev\\project")
+        assert h1 == h2
+
+    def test_trailing_slash_normalized(self):
+        """Trailing slashes should be normalized away."""
+        h1 = db_utils.hash_project_path("/tmp/myproject/")
+        h2 = db_utils.hash_project_path("/tmp/myproject")
+        assert h1 == h2
+
 
 class TestFormatFtsQuery:
     def test_simple_query(self):
@@ -36,6 +61,37 @@ class TestFormatFtsQuery:
     def test_empty_query(self):
         result = db_utils.format_fts_query("")
         assert result == '""'
+
+    def test_special_characters_stripped(self):
+        """Special characters like @#$%! should be stripped from terms."""
+        result = db_utils.format_fts_query("hello@world!")
+        assert "@" not in result
+        assert "!" not in result
+        assert "helloworld" in result
+
+    def test_multi_word_joined_with_or(self):
+        """Multiple words should be joined with OR."""
+        result = db_utils.format_fts_query("hello world")
+        assert " OR " in result
+        assert "hello" in result
+        assert "world" in result
+
+    def test_hyphen_and_underscore_preserved(self):
+        """Hyphens and underscores should be preserved in terms."""
+        result = db_utils.format_fts_query("my-project_name")
+        assert "my-project_name" in result
+
+    def test_all_special_chars_returns_empty(self):
+        """A query of only special characters should return empty query."""
+        result = db_utils.format_fts_query("@#$%")
+        assert result == '""'
+
+    def test_mixed_valid_and_empty_terms(self):
+        """Terms that become empty after cleaning should be skipped."""
+        result = db_utils.format_fts_query("valid @#$ also-valid")
+        assert "valid" in result
+        assert "also-valid" in result
+        assert " OR " in result
 
 
 class TestTruncateText:
@@ -110,3 +166,30 @@ class TestValidTables:
         import pytest
         with pytest.raises(ValueError):
             db_utils.get_table_count("nonexistent_table")
+
+    def test_get_table_count_returns_row_count(self, isolated_db):
+        """get_table_count should return actual row count for a populated table."""
+        import db_init
+        import db_save
+        db_init.init_database()
+        db_save.save_session("count-test-1")
+        db_save.save_session("count-test-2")
+        assert db_utils.get_table_count("sessions") == 2
+
+    def test_get_table_count_empty_table(self, isolated_db):
+        """get_table_count should return 0 for an empty table."""
+        import db_init
+        db_init.init_database()
+        assert db_utils.get_table_count("sessions") == 0
+
+    def test_get_table_count_no_db(self, isolated_db):
+        """get_table_count should return 0 when no database exists."""
+        assert db_utils.get_table_count("sessions") == 0
+
+    def test_get_session_count(self, isolated_db):
+        """get_session_count should delegate to get_table_count('sessions')."""
+        import db_init
+        import db_save
+        db_init.init_database()
+        db_save.save_session("session-count-1")
+        assert db_utils.get_session_count() == 1

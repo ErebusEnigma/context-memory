@@ -118,3 +118,19 @@ class TestSchemaVersioning:
             conn.commit()
             final = db_init.apply_migrations(conn)
         assert final == db_init.CURRENT_SCHEMA_VERSION
+
+    def test_apply_migrations_missing_migration_raises(self, isolated_db, monkeypatch):
+        """apply_migrations() should raise RuntimeError if a migration function is missing."""
+        # Create a legacy DB at version 1
+        with db_utils.get_connection() as conn:
+            legacy_sql = db_init.SCHEMA_SQL.split("-- Schema versioning")[0]
+            conn.executescript(legacy_sql)
+            conn.commit()
+
+        # Bump CURRENT_SCHEMA_VERSION beyond what MIGRATIONS covers
+        monkeypatch.setattr(db_init, "CURRENT_SCHEMA_VERSION", 99)
+
+        with db_utils.get_connection() as conn:
+            import pytest
+            with pytest.raises(RuntimeError, match="No migration found for version"):
+                db_init.apply_migrations(conn)

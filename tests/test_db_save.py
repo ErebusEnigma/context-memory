@@ -54,6 +54,32 @@ class TestSaveMessages:
             cursor = conn.execute("SELECT COUNT(*) FROM messages WHERE session_id = ?", (sid,))
             assert cursor.fetchone()[0] == 1
 
+    def test_append_messages(self, isolated_db):
+        """Appending messages (replace=False) should add to existing messages and update count."""
+        db_init.init_database()
+        sid = db_save.save_session("test-session-1")
+        db_save.save_messages(sid, [{"role": "user", "content": "First"}])
+        db_save.save_messages(sid, [{"role": "assistant", "content": "Second"}], replace=False)
+        with db_utils.get_connection(readonly=True) as conn:
+            msg_count = conn.execute("SELECT COUNT(*) FROM messages WHERE session_id = ?", (sid,)).fetchone()[0]
+            session_count = conn.execute("SELECT message_count FROM sessions WHERE id = ?", (sid,)).fetchone()[0]
+        assert msg_count == 2
+        assert session_count == 2
+
+    def test_messages_missing_role_and_content(self, isolated_db):
+        """Messages with missing role/content should use defaults."""
+        db_init.init_database()
+        sid = db_save.save_session("test-session-1")
+        db_save.save_messages(sid, [{"other_key": "value"}, {}])
+        with db_utils.get_connection(readonly=True) as conn:
+            rows = conn.execute(
+                "SELECT role, content FROM messages WHERE session_id = ? ORDER BY sequence", (sid,)
+            ).fetchall()
+        assert len(rows) == 2
+        assert rows[0]["role"] == "user"
+        assert rows[0]["content"] == ""
+        assert rows[1]["role"] == "user"
+
 
 class TestSaveSummary:
     def test_save_summary(self, isolated_db):
@@ -82,6 +108,27 @@ class TestSaveSummary:
         id2 = db_save.save_summary(sid, brief="Updated")
         assert id1 == id2
 
+    def test_save_summary_with_problems_and_user_note(self, isolated_db):
+        """problems_solved and user_note should be stored correctly."""
+        db_init.init_database()
+        sid = db_save.save_session("test-session-1")
+        summary_id = db_save.save_summary(
+            sid,
+            brief="Fixed auth issues",
+            problems_solved=["Token expiration", "CORS errors"],
+            user_note="Important fix for production",
+        )
+        assert summary_id >= 1
+        with db_utils.get_connection(readonly=True) as conn:
+            row = conn.execute(
+                "SELECT problems_solved, user_note FROM summaries WHERE id = ?", (summary_id,)
+            ).fetchone()
+        assert row["user_note"] == "Important fix for production"
+        import json
+        problems = json.loads(row["problems_solved"])
+        assert "Token expiration" in problems
+        assert "CORS errors" in problems
+
 
 class TestSaveTopics:
     def test_save_topics(self, isolated_db):
@@ -99,6 +146,43 @@ class TestSaveTopics:
             cursor = conn.execute("SELECT COUNT(*) FROM topics WHERE session_id = ?", (sid,))
             assert cursor.fetchone()[0] == 1
 
+    def test_empty_and_whitespace_topics_filtered(self, isolated_db):
+        """Empty strings and whitespace-only topics should be skipped."""
+        db_init.init_database()
+        sid = db_save.save_session("test-session-1")
+        count = db_save.save_topics(sid, ["", " ", "  ", "valid", " also-valid "])
+        assert count == 2
+        with db_utils.get_connection(readonly=True) as conn:
+            rows = conn.execute(
+                "SELECT topic FROM topics WHERE session_id = ? ORDER BY topic", (sid,)
+            ).fetchall()
+        topics = [r["topic"] for r in rows]
+        assert "valid" in topics
+        assert "also-valid" in topics
+
+    def test_append_topics(self, isolated_db):
+        """Appending topics (replace=False) should add to existing topics."""
+        db_init.init_database()
+        sid = db_save.save_session("test-session-1")
+        db_save.save_topics(sid, ["first"])
+        db_save.save_topics(sid, ["second"], replace=False)
+        with db_utils.get_connection(readonly=True) as conn:
+            count = conn.execute("SELECT COUNT(*) FROM topics WHERE session_id = ?", (sid,)).fetchone()[0]
+        assert count == 2
+
+
+class TestSaveSessionMetadata:
+    def test_metadata_stored_as_json(self, isolated_db):
+        """Metadata dict should be serialized as JSON in the database."""
+        db_init.init_database()
+        sid = db_save.save_session("meta-1", metadata={"auto_save": True, "source": "hook"})
+        with db_utils.get_connection(readonly=True) as conn:
+            row = conn.execute("SELECT metadata FROM sessions WHERE id = ?", (sid,)).fetchone()
+        import json
+        meta = json.loads(row["metadata"])
+        assert meta["auto_save"] is True
+        assert meta["source"] == "hook"
+
 
 class TestSaveCodeSnippet:
     def test_save_snippet(self, isolated_db):
@@ -108,6 +192,20 @@ class TestSaveCodeSnippet:
             sid, code="print('hello')", language="python", description="Hello world"
         )
         assert snippet_id >= 1
+
+    def test_save_snippet_minimal(self, isolated_db):
+        """Code snippet with only required code field should save successfully."""
+        db_init.init_database()
+        sid = db_save.save_session("test-session-1")
+        snippet_id = db_save.save_code_snippet(sid, code="x = 1")
+        assert snippet_id >= 1
+        with db_utils.get_connection(readonly=True) as conn:
+            row = conn.execute(
+                "SELECT language, description, file_path FROM code_snippets WHERE id = ?", (snippet_id,)
+            ).fetchone()
+        assert row["language"] is None
+        assert row["description"] is None
+        assert row["file_path"] is None
 
 
 class TestSaveFullSession:
