@@ -40,6 +40,11 @@ from db_utils import DB_PATH, VALID_TABLES, db_exists, get_connection  # noqa: E
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
+
+def _escape_like(value: str) -> str:
+    """Escape LIKE wildcard characters in user input."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
 app = Flask(__name__, static_folder=str(STATIC_DIR), static_url_path="/static")
 CORS(app)
 
@@ -79,8 +84,8 @@ def api_list_sessions():
         count_sql = "SELECT COUNT(*) FROM sessions"
         count_params = []
         if project:
-            count_sql += " WHERE project_path LIKE ?"
-            count_params.append(f"%{project}%")
+            count_sql += r" WHERE project_path LIKE ? ESCAPE '\'"
+            count_params.append(f"%{_escape_like(project)}%")
 
         total = conn.execute(count_sql, count_params).fetchone()[0]
 
@@ -94,8 +99,8 @@ def api_list_sessions():
         """
         params = []
         if project:
-            sql += " WHERE s.project_path LIKE ?"
-            params.append(f"%{project}%")
+            sql += r" WHERE s.project_path LIKE ? ESCAPE '\'"
+            params.append(f"%{_escape_like(project)}%")
 
         sql += f" ORDER BY s.{sort} {order_dir} LIMIT ? OFFSET ?"
         params.extend([per_page, (page - 1) * per_page])
@@ -188,11 +193,19 @@ def api_delete_session(session_db_id):
         if not row:
             return jsonify({"error": "Session not found"}), 404
 
+        session_id_text = row["session_id"]
+
         # Delete child rows explicitly so FTS triggers fire
         for table in CHILD_TABLES:
             if table not in VALID_TABLES:
                 continue
             conn.execute(f"DELETE FROM {table} WHERE session_id = ?", (session_db_id,))
+
+        # Clean up context_checkpoints (keyed by session_id TEXT, not FK INTEGER)
+        conn.execute(
+            "DELETE FROM context_checkpoints WHERE session_id = ?",
+            (session_id_text,),
+        )
 
         conn.execute("DELETE FROM sessions WHERE id = ?", (session_db_id,))
         conn.commit()
@@ -382,20 +395,40 @@ def api_init():
 
 @app.route("/api/export")
 def api_export():
-    """Export all sessions as JSON."""
+    """Export sessions as JSON with pagination.
+
+    Query params:
+        page: Page number (default 1)
+        per_page: Sessions per page (default 100, max 500)
+    """
     if not db_exists():
         return jsonify({"error": "Database does not exist"}), 404
 
+    page = request.args.get("page", 1, type=int)
+    per_page = min(request.args.get("per_page", 100, type=int), 500)
+
     with get_connection(readonly=True) as conn:
-        # Get all session IDs
-        cursor = conn.execute("SELECT id FROM sessions ORDER BY created_at DESC")
+        total = conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
+        cursor = conn.execute(
+            "SELECT id FROM sessions ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            (per_page, (page - 1) * per_page),
+        )
         session_ids = [row["id"] for row in cursor.fetchall()]
 
     if not session_ids:
-        return jsonify({"sessions": []})
+        return jsonify({"sessions": [], "count": 0, "total": total, "page": page, "per_page": per_page, "has_more": False})
 
     sessions = search_tier2(session_ids, include_messages=True, include_snippets=True)
-    return jsonify({"sessions": sessions, "count": len(sessions), "db_path": str(DB_PATH)})
+    has_more = (page * per_page) < total
+    return jsonify({
+        "sessions": sessions,
+        "count": len(sessions),
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "has_more": has_more,
+        "db_path": str(DB_PATH),
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -435,15 +468,15 @@ def api_hints():
     with get_connection(readonly=True) as conn:
         # Topics scoped to project
         if project:
-            cursor = conn.execute("""
+            cursor = conn.execute(r"""
                 SELECT t.topic, COUNT(*) as count
                 FROM topics t
                 JOIN sessions s ON s.id = t.session_id
-                WHERE t.topic != 'auto-save' AND s.project_path LIKE ?
+                WHERE t.topic != 'auto-save' AND s.project_path LIKE ? ESCAPE '\'
                 GROUP BY t.topic
                 ORDER BY count DESC
                 LIMIT 15
-            """, (f"%{project}%",))
+            """, (f"%{_escape_like(project)}%",))
         else:
             cursor = conn.execute("""
                 SELECT topic, COUNT(*) as count
@@ -457,12 +490,12 @@ def api_hints():
 
         # Technologies scoped to project
         if project:
-            cursor = conn.execute("""
+            cursor = conn.execute(r"""
                 SELECT sum.technologies
                 FROM summaries sum
                 JOIN sessions s ON s.id = sum.session_id
-                WHERE sum.technologies IS NOT NULL AND s.project_path LIKE ?
-            """, (f"%{project}%",))
+                WHERE sum.technologies IS NOT NULL AND s.project_path LIKE ? ESCAPE '\'
+            """, (f"%{_escape_like(project)}%",))
         else:
             cursor = conn.execute(
                 "SELECT technologies FROM summaries WHERE technologies IS NOT NULL"

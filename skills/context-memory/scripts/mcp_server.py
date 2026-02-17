@@ -171,6 +171,7 @@ def context_load_checkpoint(
     session_id: str | None = None,
     project_path: str | None = None,
     last_n_messages: int | None = None,
+    metadata_only: bool = False,
 ) -> dict:
     """Load the most recent pre-compact context checkpoint.
 
@@ -183,6 +184,10 @@ def context_load_checkpoint(
                     most recent checkpoint for the project.
         project_path: Filter by project directory.
         last_n_messages: Only return the last N messages (for partial reload).
+        metadata_only: If True, return checkpoint info (message_count,
+                       created_at, trigger_type) without loading the messages
+                       array. Useful for checking checkpoint size before
+                       loading the full blob.
 
     Returns:
         Dict with checkpoint info and messages array, or error message.
@@ -190,12 +195,17 @@ def context_load_checkpoint(
     if not db_exists():
         return {"error": "Database does not exist.", "messages": []}
 
+    # Select columns based on metadata_only flag
+    if metadata_only:
+        columns = "id, session_id, project_path, checkpoint_number, trigger_type, message_count, created_at"
+    else:
+        columns = "id, session_id, project_path, checkpoint_number, trigger_type, messages, message_count, created_at"
+
     with get_connection(readonly=True) as conn:
         if session_id:
             cursor = conn.execute(
-                """
-                SELECT id, session_id, project_path, checkpoint_number,
-                       trigger_type, messages, message_count, created_at
+                f"""
+                SELECT {columns}
                 FROM context_checkpoints
                 WHERE session_id = ?
                 ORDER BY created_at DESC, checkpoint_number DESC
@@ -206,9 +216,8 @@ def context_load_checkpoint(
         elif project_path:
             proj_hash = hash_project_path(project_path)
             cursor = conn.execute(
-                """
-                SELECT id, session_id, project_path, checkpoint_number,
-                       trigger_type, messages, message_count, created_at
+                f"""
+                SELECT {columns}
                 FROM context_checkpoints
                 WHERE project_hash = ?
                 ORDER BY created_at DESC, checkpoint_number DESC
@@ -219,9 +228,8 @@ def context_load_checkpoint(
         else:
             # No filter: return most recent checkpoint overall
             cursor = conn.execute(
-                """
-                SELECT id, session_id, project_path, checkpoint_number,
-                       trigger_type, messages, message_count, created_at
+                f"""
+                SELECT {columns}
                 FROM context_checkpoints
                 ORDER BY created_at DESC, checkpoint_number DESC
                 LIMIT 1
@@ -233,6 +241,10 @@ def context_load_checkpoint(
             return {"error": "No checkpoints found.", "messages": []}
 
         result = dict(row)
+
+        if metadata_only:
+            result["metadata_only"] = True
+            return result
 
         # Parse the messages JSON blob
         try:

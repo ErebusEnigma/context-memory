@@ -417,8 +417,12 @@ def format_results_markdown(results: dict, detailed: bool = False) -> str:
 
         # Rank-based display (BM25 scores are already sorted)
         relevance_display = f"Match #{i}"
+        match_sources = session.get('match_sources')
+        source_display = ""
+        if match_sources:
+            source_display = f" | matched in: {', '.join(match_sources)}"
 
-        lines.append(f"## {i}. {created} | {project} ({relevance_display})")
+        lines.append(f"## {i}. {created} | {project} ({relevance_display}{source_display})")
 
         # Brief summary
         brief = session.get('brief', 'No summary available')

@@ -224,6 +224,26 @@ class TestApiUpdateSession:
         )
         assert resp.status_code == 400
 
+    def test_update_without_brief(self, client, seeded_db):
+        """PUT with only non-brief fields should not crash (BUG-1)."""
+        list_resp = client.get("/api/sessions")
+        sid = list_resp.get_json()["sessions"][0]["id"]
+
+        resp = client.put(
+            f"/api/sessions/{sid}",
+            json={"outcome": "success"},
+        )
+        data = resp.get_json()
+        assert resp.status_code == 200
+        assert "summary" in data["updated"]
+        assert "outcome" in data["updated"]["summary"]
+
+        # Verify the original brief is preserved
+        detail_resp = client.get(f"/api/sessions/{sid}")
+        detail = detail_resp.get_json()
+        assert detail["brief"] is not None
+        assert detail["brief"] != ""
+
     def test_no_db(self, client, isolated_db):
         resp = client.put("/api/sessions/1", json={"brief": "x"})
         assert resp.status_code == 404
@@ -257,7 +277,17 @@ class TestApiDeleteSession:
 
     def test_children_cleaned(self, client, seeded_db):
         list_resp = client.get("/api/sessions")
-        sid = list_resp.get_json()["sessions"][0]["id"]
+        session = list_resp.get_json()["sessions"][0]
+        sid = session["id"]
+        session_id_text = session["session_id"]
+
+        # Insert a checkpoint so we can verify it gets cleaned up
+        with get_connection() as conn:
+            conn.execute(
+                "INSERT INTO context_checkpoints (session_id, project_path, project_hash, checkpoint_number, trigger_type, messages, message_count) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (session_id_text, "/tmp/project-alpha", "abc123", 1, "test", "[]", 0),
+            )
+            conn.commit()
 
         client.delete(f"/api/sessions/{sid}")
 
@@ -267,6 +297,13 @@ class TestApiDeleteSession:
                     f"SELECT COUNT(*) FROM {table} WHERE session_id = ?", (sid,)
                 ).fetchone()[0]
                 assert count == 0, f"{table} still has rows for deleted session"
+
+            # Verify context_checkpoints are also cleaned up (BUG-2)
+            cp_count = conn.execute(
+                "SELECT COUNT(*) FROM context_checkpoints WHERE session_id = ?",
+                (session_id_text,),
+            ).fetchone()[0]
+            assert cp_count == 0, "context_checkpoints still has rows for deleted session"
 
 
 # ---------------------------------------------------------------------------
@@ -492,9 +529,26 @@ class TestApiExport:
         assert resp.status_code == 200
         assert len(data["sessions"]) == 2
         assert data["count"] == 2
+        assert data["total"] == 2
+        assert data["has_more"] is False
         # Each session should have messages and code_snippets keys
         for s in data["sessions"]:
             assert "messages" in s
+
+    def test_export_pagination(self, client, seeded_db):
+        resp = client.get("/api/export?page=1&per_page=1")
+        data = resp.get_json()
+        assert resp.status_code == 200
+        assert len(data["sessions"]) == 1
+        assert data["total"] == 2
+        assert data["has_more"] is True
+        assert data["page"] == 1
+
+        # Page 2
+        resp2 = client.get("/api/export?page=2&per_page=1")
+        data2 = resp2.get_json()
+        assert len(data2["sessions"]) == 1
+        assert data2["has_more"] is False
 
     def test_export_empty_db(self, client, isolated_db):
         init_database()

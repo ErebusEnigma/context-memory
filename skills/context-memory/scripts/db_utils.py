@@ -51,6 +51,7 @@ def get_connection(readonly: bool = False) -> Iterator[sqlite3.Connection]:
 
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA synchronous=NORMAL")
     conn.execute("PRAGMA cache_size=-64000")  # 64MB cache
     conn.execute("PRAGMA temp_store=MEMORY")
@@ -66,7 +67,7 @@ def hash_project_path(project_path: str) -> str:
     Create a consistent hash for a project path.
     Useful for quick project-scoped queries.
     """
-    normalized = os.path.normpath(os.path.abspath(project_path))
+    normalized = os.path.normpath(os.path.abspath(os.path.expanduser(project_path)))
 
     # Fix MSYS2/Git Bash paths: /c/Users/... becomes C:\c\Users\... after abspath
     if platform.system() == 'Windows' and len(normalized) > 3:
@@ -100,13 +101,16 @@ def format_fts_query(query: str, use_prefix: bool = True) -> str:
 
     formatted_terms = []
     for term in terms:
-        # Escape any special characters
-        clean_term = ''.join(c for c in term if c.isalnum() or c in '-_')
-        if clean_term:
-            if use_prefix:
-                formatted_terms.append(f'"{clean_term}"*')
-            else:
-                formatted_terms.append(f'"{clean_term}"')
+        # Split on dots to match FTS5 unicode61 tokenizer behavior (e.g. node.js → node, js)
+        # Strip + entirely (e.g. C++ → C)
+        sub_terms = term.replace('+', '').split('.')
+        for sub in sub_terms:
+            clean = ''.join(c for c in sub if c.isalnum() or c in '-_')
+            if clean:
+                if use_prefix:
+                    formatted_terms.append(f'"{clean}"*')
+                else:
+                    formatted_terms.append(f'"{clean}"')
 
     return ' OR '.join(formatted_terms) if formatted_terms else '""'
 

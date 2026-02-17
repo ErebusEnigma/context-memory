@@ -12,6 +12,7 @@ export function renderSessionCard(session) {
     const outcome = outcomeBadge(session.outcome);
     const msgCount = session.message_count || 0;
     const isAuto = session.metadata && (session.metadata.auto_save === true || session.metadata === '{"auto_save": true}');
+    const matchSources = (session.match_sources || []).map(s => `<span class="badge badge-muted">${escapeHtml(s)}</span>`).join('');
 
     return `
         <div class="card card-clickable session-card" data-id="${session.id}">
@@ -20,6 +21,7 @@ export function renderSessionCard(session) {
                 <span class="session-card-project">${escapeHtml(project)}</span>
                 ${outcome}
                 ${isAuto ? '<span class="badge badge-muted">auto</span>' : ''}
+                ${matchSources}
             </div>
             <div class="session-card-brief">${brief}</div>
             <div class="session-card-footer">

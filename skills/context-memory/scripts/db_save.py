@@ -49,33 +49,22 @@ def save_session(
     metadata_json = json.dumps(metadata) if metadata else None
 
     with get_connection() as conn:
-        # Check if session exists
-        cursor = conn.execute(
-            "SELECT id FROM sessions WHERE session_id = ?",
-            (session_id,)
-        )
-        existing = cursor.fetchone()
-
-        if existing:
-            # Update existing session
-            conn.execute("""
-                UPDATE sessions
-                SET project_path = COALESCE(?, project_path),
-                    project_hash = COALESCE(?, project_hash),
-                    metadata = COALESCE(?, metadata),
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE session_id = ?
-            """, (project_path, project_hash, metadata_json, session_id))
-            session_db_id = existing['id']
-        else:
-            # Insert new session
-            cursor = conn.execute("""
-                INSERT INTO sessions (session_id, project_path, project_hash, metadata)
-                VALUES (?, ?, ?, ?)
-            """, (session_id, project_path, project_hash, metadata_json))
-            session_db_id = cursor.lastrowid
-
+        conn.execute("""
+            INSERT INTO sessions (session_id, project_path, project_hash, metadata)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(session_id) DO UPDATE SET
+                project_path = COALESCE(excluded.project_path, project_path),
+                project_hash = COALESCE(excluded.project_hash, project_hash),
+                metadata = COALESCE(excluded.metadata, metadata),
+                updated_at = CURRENT_TIMESTAMP
+        """, (session_id, project_path, project_hash, metadata_json))
         conn.commit()
+
+        # Fetch the id (works for both insert and update)
+        row = conn.execute(
+            "SELECT id FROM sessions WHERE session_id = ?", (session_id,)
+        ).fetchone()
+        session_db_id = row['id']
 
     return session_db_id
 
@@ -127,7 +116,7 @@ def save_messages(
 
 def save_summary(
     session_db_id: int,
-    brief: str,
+    brief: Optional[str] = None,
     detailed: Optional[str] = None,
     key_decisions: Optional[list[str]] = None,
     problems_solved: Optional[list[str]] = None,
@@ -140,7 +129,7 @@ def save_summary(
 
     Args:
         session_db_id: Database ID of the session
-        brief: One-line summary
+        brief: One-line summary (required for new summaries, optional for updates)
         detailed: Detailed summary
         key_decisions: List of key decisions made
         problems_solved: List of problems solved
@@ -166,7 +155,7 @@ def save_summary(
         if existing:
             conn.execute("""
                 UPDATE summaries
-                SET brief = ?,
+                SET brief = COALESCE(?, brief),
                     detailed = COALESCE(?, detailed),
                     key_decisions = COALESCE(?, key_decisions),
                     problems_solved = COALESCE(?, problems_solved),
@@ -178,6 +167,8 @@ def save_summary(
                   outcome, user_note, session_db_id))
             summary_id = existing['id']
         else:
+            if brief is None:
+                raise ValueError("brief is required when creating a new summary")
             cursor = conn.execute("""
                 INSERT INTO summaries
                 (session_id, brief, detailed, key_decisions, problems_solved, technologies, outcome, user_note)
@@ -366,12 +357,6 @@ if __name__ == "__main__":
     if not args.json and not args.session_id:
         parser.error("--session-id is required when --json is not provided")
 
-    # Deduplication check for auto-saves
-    if args.auto and args.project_path:
-        if should_skip_auto_save(args.project_path, args.dedup_window):
-            print(json.dumps({"skipped": True, "reason": "rich session exists within dedup window"}))
-            sys.exit(0)
-
     if args.json:
         # Load from JSON file or stdin
         try:
@@ -388,6 +373,13 @@ if __name__ == "__main__":
             print(f"Error: Invalid JSON in {source}: {e}")
             sys.exit(1)
 
+        # Dedup check for auto-saves: use project_path from JSON payload
+        dedup_path = data.get("project_path") or args.project_path
+        if args.auto and dedup_path:
+            if should_skip_auto_save(dedup_path, args.dedup_window):
+                print(json.dumps({"skipped": True, "reason": "rich session exists within dedup window"}))
+                sys.exit(0)
+
         # Inject auto_save metadata when --auto is combined with --json
         if args.auto:
             existing_meta = data.get("metadata") or {}
@@ -396,6 +388,12 @@ if __name__ == "__main__":
 
         result = save_full_session(**data)
     else:
+        # Deduplication check for auto-saves (CLI-args path)
+        if args.auto and args.project_path:
+            if should_skip_auto_save(args.project_path, args.dedup_window):
+                print(json.dumps({"skipped": True, "reason": "rich session exists within dedup window"}))
+                sys.exit(0)
+
         # Save from arguments
         topics = args.topics.split(',') if args.topics else None
         metadata = {"auto_save": True} if args.auto else None

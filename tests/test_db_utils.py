@@ -44,6 +44,14 @@ class TestHashProjectPath:
         h2 = db_utils.hash_project_path("/tmp/myproject")
         assert h1 == h2
 
+    def test_tilde_expanded(self):
+        """Tilde (~) should be expanded to home directory before hashing."""
+        import os
+        home = os.path.expanduser("~")
+        h1 = db_utils.hash_project_path("~/myproject")
+        h2 = db_utils.hash_project_path(os.path.join(home, "myproject"))
+        assert h1 == h2
+
 
 class TestFormatFtsQuery:
     def test_simple_query(self):
@@ -63,11 +71,29 @@ class TestFormatFtsQuery:
         assert result == '""'
 
     def test_special_characters_stripped(self):
-        """Special characters like @#$%! should be stripped from terms."""
+        """Special characters like @#$! should be stripped from terms."""
         result = db_utils.format_fts_query("hello@world!")
         assert "@" not in result
         assert "!" not in result
         assert "helloworld" in result
+
+    def test_dot_splits_term(self):
+        """Dots should split terms to match FTS5 tokenizer behavior (e.g. node.js)."""
+        result = db_utils.format_fts_query("node.js")
+        assert '"node"' in result
+        assert '"js"' in result
+        assert " OR " in result
+
+    def test_plus_stripped(self):
+        """Plus signs should be stripped (e.g. C++ → C)."""
+        result = db_utils.format_fts_query("C++")
+        assert '"C"' in result
+        assert "+" not in result
+
+    def test_dotnet_handled(self):
+        """.NET should produce 'NET' after stripping leading dot."""
+        result = db_utils.format_fts_query(".NET")
+        assert '"NET"' in result
 
     def test_multi_word_joined_with_or(self):
         """Multiple words should be joined with OR."""
@@ -154,6 +180,12 @@ class TestGetConnection:
             cursor = conn.execute("PRAGMA journal_mode")
             mode = cursor.fetchone()[0]
         assert mode == "wal"
+
+    def test_foreign_keys_enabled(self, isolated_db):
+        """Connection should have PRAGMA foreign_keys=ON."""
+        with db_utils.get_connection() as conn:
+            cursor = conn.execute("PRAGMA foreign_keys")
+            assert cursor.fetchone()[0] == 1
 
     def test_synchronous_normal(self, isolated_db):
         """Connection should use NORMAL synchronous mode (1)."""
