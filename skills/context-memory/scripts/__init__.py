@@ -4,7 +4,7 @@ Context Memory Scripts Package
 Database utilities for persistent, searchable context storage.
 """
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 from .db_init import get_stats, init_database, verify_schema
 from .db_prune import prune_sessions
