@@ -147,6 +147,60 @@ class TestContextStats:
 # TestMCPServerRegistration
 # ---------------------------------------------------------------------------
 
+class TestCaptureStdout:
+    """Verify that _capture_stdout suppresses print() and returns the function result."""
+
+    def test_suppresses_print(self, capsys):
+        """Stdout from the wrapped function should not leak."""
+        def noisy_fn():
+            print("this should be captured")
+            return 42
+
+        result = mcp_server._capture_stdout(noisy_fn)
+        assert result == 42
+        captured = capsys.readouterr()
+        assert "this should be captured" not in captured.out
+
+    def test_returns_function_result(self):
+        """The wrapped function's return value should pass through."""
+        result = mcp_server._capture_stdout(lambda: {"key": "value"})
+        assert result == {"key": "value"}
+
+    def test_passes_args_and_kwargs(self):
+        """Arguments should be forwarded to the wrapped function."""
+        def add(a, b, extra=0):
+            return a + b + extra
+
+        result = mcp_server._capture_stdout(add, 1, 2, extra=10)
+        assert result == 13
+
+    def test_init_database_stdout_suppressed(self, capsys):
+        """context_init should not leak init_database's print() to stdout."""
+        mcp_server.context_init()
+        captured = capsys.readouterr()
+        assert "initialized" not in captured.out.lower()
+
+
+class TestContextSaveWithMetadata:
+    def test_metadata_passed_through(self):
+        """context_save should forward metadata to save_full_session."""
+        init_database()
+        result = mcp_server.context_save(
+            session_id="meta-mcp-1",
+            metadata={"source": "mcp", "custom": True},
+        )
+        assert "session_id" in result
+        import db_utils
+        import json
+        with db_utils.get_connection(readonly=True) as conn:
+            row = conn.execute(
+                "SELECT metadata FROM sessions WHERE id = ?", (result["session_id"],)
+            ).fetchone()
+        meta = json.loads(row["metadata"])
+        assert meta["source"] == "mcp"
+        assert meta["custom"] is True
+
+
 class TestMCPServerRegistration:
     """Verify the FastMCP instance is configured correctly."""
 

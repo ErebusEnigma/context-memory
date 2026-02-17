@@ -246,6 +246,141 @@ class TestCLIEntryPoints:
         assert output["pruned"] == 0  # Only 1 session, keeping 5
 
 
+class TestCLIEntryPointsExtended:
+    """Additional CLI tests for --verify, --stats, markdown output, and actual prune."""
+
+    def test_db_init_verify_cli(self, isolated_db):
+        """db_init.py --verify should report schema validity."""
+        env = {**os.environ, "CONTEXT_MEMORY_DB_PATH": str(isolated_db)}
+        # Init first
+        subprocess.run(
+            [sys.executable, os.path.join(SCRIPTS_DIR, "db_init.py")],
+            capture_output=True, text=True, env=env,
+        )
+        result = subprocess.run(
+            [sys.executable, os.path.join(SCRIPTS_DIR, "db_init.py"), "--verify"],
+            capture_output=True, text=True, env=env,
+        )
+        assert result.returncode == 0
+        assert "valid" in result.stdout.lower()
+
+    def test_db_init_verify_no_db(self, isolated_db):
+        """db_init.py --verify should fail when no database exists."""
+        env = {**os.environ, "CONTEXT_MEMORY_DB_PATH": str(isolated_db)}
+        result = subprocess.run(
+            [sys.executable, os.path.join(SCRIPTS_DIR, "db_init.py"), "--verify"],
+            capture_output=True, text=True, env=env,
+        )
+        assert result.returncode != 0
+
+    def test_db_init_stats_cli(self, isolated_db):
+        """db_init.py --stats should show table counts."""
+        env = {**os.environ, "CONTEXT_MEMORY_DB_PATH": str(isolated_db)}
+        subprocess.run(
+            [sys.executable, os.path.join(SCRIPTS_DIR, "db_init.py")],
+            capture_output=True, text=True, env=env,
+        )
+        # Save a session so there's data
+        subprocess.run(
+            [sys.executable, os.path.join(SCRIPTS_DIR, "db_save.py"),
+             "--session-id", "stats-1", "--brief", "Stats test"],
+            capture_output=True, text=True, env=env,
+        )
+        result = subprocess.run(
+            [sys.executable, os.path.join(SCRIPTS_DIR, "db_init.py"), "--stats"],
+            capture_output=True, text=True, env=env,
+        )
+        assert result.returncode == 0
+        assert "sessions" in result.stdout.lower()
+        assert "db_size_bytes" in result.stdout
+
+    def test_db_init_stats_no_db(self, isolated_db):
+        """db_init.py --stats should fail when no database exists."""
+        env = {**os.environ, "CONTEXT_MEMORY_DB_PATH": str(isolated_db)}
+        result = subprocess.run(
+            [sys.executable, os.path.join(SCRIPTS_DIR, "db_init.py"), "--stats"],
+            capture_output=True, text=True, env=env,
+        )
+        assert result.returncode != 0
+
+    def test_db_search_markdown_cli(self, isolated_db):
+        """db_search.py should output markdown by default."""
+        env = {**os.environ, "CONTEXT_MEMORY_DB_PATH": str(isolated_db)}
+        subprocess.run(
+            [sys.executable, os.path.join(SCRIPTS_DIR, "db_init.py")],
+            capture_output=True, text=True, env=env,
+        )
+        subprocess.run(
+            [sys.executable, os.path.join(SCRIPTS_DIR, "db_save.py"),
+             "--session-id", "md-1", "--brief", "Markdown output test",
+             "--topics", "markdown"],
+            capture_output=True, text=True, env=env,
+        )
+        result = subprocess.run(
+            [sys.executable, os.path.join(SCRIPTS_DIR, "db_search.py"),
+             "markdown"],
+            capture_output=True, text=True, env=env,
+        )
+        assert result.returncode == 0
+        assert "# Context Memory Results" in result.stdout
+
+    def test_db_prune_actual_prune_cli(self, isolated_db):
+        """db_prune.py without --dry-run should actually delete sessions."""
+        env = {**os.environ, "CONTEXT_MEMORY_DB_PATH": str(isolated_db)}
+        subprocess.run(
+            [sys.executable, os.path.join(SCRIPTS_DIR, "db_init.py")],
+            capture_output=True, text=True, env=env,
+        )
+        # Create 3 sessions
+        for i in range(3):
+            subprocess.run(
+                [sys.executable, os.path.join(SCRIPTS_DIR, "db_save.py"),
+                 "--session-id", f"prune-{i}", "--brief", f"Session {i}"],
+                capture_output=True, text=True, env=env,
+            )
+        result = subprocess.run(
+            [sys.executable, os.path.join(SCRIPTS_DIR, "db_prune.py"),
+             "--max-sessions", "1"],
+            capture_output=True, text=True, env=env,
+        )
+        assert result.returncode == 0
+        output = json.loads(result.stdout)
+        assert output["pruned"] == 2
+
+    def test_code_snippets_end_to_end(self, isolated_db):
+        """Save a session with code snippets and find it via search."""
+        db_init.init_database()
+        db_save.save_full_session(
+            session_id="snippet-e2e-1",
+            project_path="/tmp/snippet-project",
+            summary={"brief": "Implemented custom sorting algorithm"},
+            topics=["algorithms", "sorting"],
+            code_snippets=[
+                {
+                    "code": "def quicksort(arr):\n    if len(arr) <= 1:\n        return arr",
+                    "language": "python",
+                    "description": "Quicksort implementation",
+                    "file_path": "src/sorting.py",
+                },
+            ],
+            messages=[
+                {"role": "user", "content": "Write a quicksort function"},
+                {"role": "assistant", "content": "Here is a quicksort implementation"},
+            ],
+        )
+        # Search via tier 1 (snippets FTS)
+        results = db_search.search_tier1("quicksort")
+        assert len(results) >= 1
+
+        # Fetch via tier 2 and verify snippets are included
+        tier2 = db_search.search_tier2([results[0]["id"]])
+        assert len(tier2) >= 1
+        assert len(tier2[0].get("code_snippets", [])) >= 1
+        snippet = tier2[0]["code_snippets"][0]
+        assert "quicksort" in snippet["code"]
+        assert snippet["language"] == "python"
+
+
 class TestDeduplicationIntegration:
     def test_rich_session_prevents_auto_save(self, isolated_db):
         db_init.init_database()
