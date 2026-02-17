@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.2.0] - 2026-02-17
+
+### Added
+- **Web dashboard** (`dashboard.py`) — Flask-based single-page app for browsing, searching, managing, and analyzing stored sessions
+  - REST API with 17 endpoints: sessions CRUD, full-text search, analytics (timeline, topics, projects, outcomes, technologies), database management (init, prune, export), and search hint chips
+  - Frontend SPA with hash-based routing, dark/light theme toggle, session detail views, code syntax highlighting (Highlight.js), and interactive charts (Chart.js)
+  - Session editing (summary, topics, user notes) and deletion from the UI
+  - Database export as JSON, prune with dry-run preview
+- `context_dashboard` MCP tool to launch the web dashboard from any MCP-compatible client
+- 73 new tests covering high and medium priority gaps across install, uninstall, search, save, init, utils, and auto-save modules
+
+### Changed
+- `.gitignore` expanded with additional patterns: build artifacts (`*.whl`, `*.tar.gz`, `MANIFEST`), SQLite journal files, coverage variants, test framework caches (`.tox/`, `.nox/`, `.hypothesis/`), log files
+
 ## [1.1.0] - 2026-02-16
 
 ### Added

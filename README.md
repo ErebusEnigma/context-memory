@@ -17,6 +17,7 @@ Persistent, searchable context storage across Claude Code sessions using SQLite 
 - [How It Works](#how-it-works)
 - [Usage Examples](#usage-examples)
 - [Trigger Phrases](#trigger-phrases)
+- [Web Dashboard](#web-dashboard)
 - [Database Management](#database-management)
 - [Contributing](#contributing)
 - [License](#license)
@@ -84,6 +85,7 @@ This removes the skill, commands, hooks, and MCP server registration. Your saved
 - Python >= 3.8
 - SQLite with FTS5 support (included in Python's standard library)
 - MCP server (optional): Python >= 3.10 and `pip install mcp`
+- Web dashboard (optional): `pip install flask flask-cors`
 
 ## Commands
 
@@ -152,6 +154,7 @@ An optional MCP (Model Context Protocol) server exposes context-memory operation
 - `context_save` — Save a session with messages, summary, topics, snippets
 - `context_stats` — Database statistics
 - `context_init` — Initialize/verify database
+- `context_dashboard` — Launch the web dashboard (see [Web Dashboard](#web-dashboard))
 
 **Setup:**
 
@@ -207,6 +210,34 @@ The context-memory skill also activates on natural language:
 - "recall" / "search past sessions"
 - "what did we discuss about..."
 - "find previous work on..."
+
+## Web Dashboard
+
+A browser-based UI for browsing, searching, and managing your stored sessions.
+
+```bash
+pip install flask flask-cors
+python skills/context-memory/scripts/dashboard.py
+```
+
+Then open [http://127.0.0.1:5111](http://127.0.0.1:5111).
+
+**Features:**
+- **Search** — Full-text search with topic/technology hint chips
+- **Sessions** — Browse all sessions with pagination, project filtering, and sorting
+- **Session detail** — View full summaries, messages, and code snippets; edit topics and notes inline
+- **Analytics** — Timeline charts, topic frequency, project distribution, outcome breakdown, technology usage
+- **Settings** — Initialize or reinitialize the database, prune old sessions (with dry-run preview), export all data as JSON
+
+Use `--port` to change the default port:
+
+```bash
+python skills/context-memory/scripts/dashboard.py --port 8080
+```
+
+The dashboard can also be launched via the MCP `context_dashboard` tool, which starts it in the background.
+
+> **Note**: The dashboard requires `flask` and `flask-cors` (`pip install flask flask-cors`). These are not needed for the core plugin.
 
 ## Database Management
 

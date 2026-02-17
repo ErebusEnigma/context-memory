@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import contextlib
 import io
+import socket
 import sys
+import threading
 from pathlib import Path
 
 # Ensure sibling modules (db_init, db_save, db_search) are importable regardless
@@ -160,6 +162,54 @@ def context_init(force: bool = False) -> dict:
     if created:
         return {"created": True, "message": "Database initialized."}
     return {"created": False, "message": "Database already exists."}
+
+
+_dashboard_thread = None
+_dashboard_port = None
+
+
+def _port_in_use(port: int) -> bool:
+    """Check if a port is already in use."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(("127.0.0.1", port)) == 0
+
+
+@mcp.tool()
+def context_dashboard(port: int = 5111) -> dict:
+    """Launch the context memory web dashboard in the background.
+
+    Starts a local Flask web server serving the dashboard UI.
+    If already running, returns the existing URL.
+
+    Requires: pip install flask flask-cors
+
+    Args:
+        port: Port to listen on (default 5111).
+
+    Returns:
+        Dict with 'url' and 'status'.
+    """
+    global _dashboard_thread, _dashboard_port
+
+    if _dashboard_thread is not None and _dashboard_thread.is_alive():
+        return {"url": f"http://127.0.0.1:{_dashboard_port}", "status": "already_running"}
+
+    if _port_in_use(port):
+        return {"url": f"http://127.0.0.1:{port}", "status": "port_in_use"}
+
+    try:
+        from dashboard import app as flask_app  # noqa: E402
+    except ImportError as e:
+        return {"error": str(e), "status": "import_error"}
+
+    def _run():
+        flask_app.run(host="127.0.0.1", port=port, debug=False, use_reloader=False)
+
+    _dashboard_port = port
+    _dashboard_thread = threading.Thread(target=_run, daemon=True)
+    _dashboard_thread.start()
+
+    return {"url": f"http://127.0.0.1:{port}", "status": "started"}
 
 
 if __name__ == "__main__":

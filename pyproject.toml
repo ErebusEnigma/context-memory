@@ -1,6 +1,6 @@
 [project]
 name = "context-memory"
-version = "1.1.0"
+version = "1.2.0"
 description = "Persistent, searchable context storage across Claude Code sessions using SQLite + FTS5"
 readme = "README.md"
 license = "MIT"

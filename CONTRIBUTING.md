@@ -17,6 +17,7 @@ cd context-memory
 
 ```bash
 pip install ruff pytest
+pip install flask flask-cors   # optional, for dashboard development
 ```
 
 ## Verify Schema
@@ -42,6 +43,14 @@ ruff check .
 ```bash
 python -m pytest tests/ -v
 ```
+
+## Running the Dashboard
+
+```bash
+python skills/context-memory/scripts/dashboard.py
+```
+
+Opens at [http://127.0.0.1:5111](http://127.0.0.1:5111). The frontend is vanilla JS in `skills/context-memory/scripts/static/` — no build step required.
 
 ## Project Structure Notes
 
