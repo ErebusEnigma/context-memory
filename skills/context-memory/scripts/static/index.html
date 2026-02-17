@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Context Memory Dashboard</title>
+
+    <!-- Chart.js for analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+
+    <!-- Highlight.js for code syntax highlighting -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11"></script>
+
+    <!-- Dashboard styles -->
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-brand">
+            <span class="nav-logo">&#9671;</span>
+            <span class="nav-title">Context Memory</span>
+        </div>
+        <div class="nav-links">
+            <a href="#/" class="nav-link active" data-route="/">Search</a>
+            <a href="#/sessions" class="nav-link" data-route="/sessions">Sessions</a>
+            <a href="#/analytics" class="nav-link" data-route="/analytics">Analytics</a>
+            <a href="#/settings" class="nav-link" data-route="/settings">Settings</a>
+        </div>
+        <div class="nav-actions">
+            <button id="theme-toggle" class="btn btn-icon" title="Toggle theme">
+                <span class="icon-sun">&#9788;</span>
+                <span class="icon-moon">&#9790;</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main content -->
+    <main id="app" class="main">
+        <div class="loading">Loading...</div>
+    </main>
+
+    <!-- Toast container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Modal container -->
+    <div id="modal-overlay" class="modal-overlay hidden"></div>
+
+    <!-- App scripts -->
+    <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

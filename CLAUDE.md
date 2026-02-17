@@ -17,6 +17,8 @@ skills/context-memory/        # Skill definition (SKILL.md)
     db_prune.py              # Database pruning (by age/count)
     db_utils.py              # Connection management, helpers, VALID_TABLES
     mcp_server.py            # MCP server (FastMCP, stdio transport)
+    dashboard.py             # Web dashboard (Flask REST API + SPA)
+    static/                  # Dashboard frontend (vanilla JS, CSS)
 commands/                     # /remember and /recall command definitions
 hooks/                        # Auto-save stop hook (with dedup)
 ```
@@ -27,6 +29,7 @@ hooks/                        # Auto-save stop hook (with dedup)
 python skills/context-memory/scripts/db_init.py --verify  # Verify schema
 python skills/context-memory/scripts/db_init.py --stats   # DB statistics
 python skills/context-memory/scripts/db_prune.py --max-sessions 100 --dry-run  # Preview prune
+python skills/context-memory/scripts/dashboard.py          # Launch web dashboard (localhost:5111)
 python -m pytest tests/ -v                                # Run tests
 ruff check .                                              # Lint
 ```
