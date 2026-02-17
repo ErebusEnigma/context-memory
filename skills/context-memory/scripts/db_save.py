@@ -99,12 +99,19 @@ def save_messages(
     with get_connection() as conn:
         if replace:
             conn.execute("DELETE FROM messages WHERE session_id = ?", (session_db_id,))
+            offset = 0
+        else:
+            cursor = conn.execute(
+                "SELECT COALESCE(MAX(sequence), -1) FROM messages WHERE session_id = ?",
+                (session_db_id,),
+            )
+            offset = cursor.fetchone()[0] + 1
 
         for i, msg in enumerate(messages):
             conn.execute("""
                 INSERT INTO messages (session_id, role, content, sequence)
                 VALUES (?, ?, ?, ?)
-            """, (session_db_id, msg.get('role', 'user'), msg.get('content', ''), i))
+            """, (session_db_id, msg.get('role', 'user'), msg.get('content', ''), offset + i))
 
         # Update message count from actual rows (correct even on append)
         cursor = conn.execute(

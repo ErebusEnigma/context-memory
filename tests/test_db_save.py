@@ -66,6 +66,20 @@ class TestSaveMessages:
         assert msg_count == 2
         assert session_count == 2
 
+    def test_append_messages_sequence_continuity(self, isolated_db):
+        """Appending messages should continue sequence numbering, not restart at 0."""
+        db_init.init_database()
+        sid = db_save.save_session("test-seq")
+        db_save.save_messages(sid, [{"role": "user", "content": "First"}])
+        db_save.save_messages(sid, [{"role": "assistant", "content": "Second"}], replace=False)
+        with db_utils.get_connection(readonly=True) as conn:
+            rows = conn.execute(
+                "SELECT sequence, content FROM messages WHERE session_id = ? ORDER BY sequence",
+                (sid,)
+            ).fetchall()
+        assert rows[0]["sequence"] == 0
+        assert rows[1]["sequence"] == 1
+
     def test_messages_missing_role_and_content(self, isolated_db):
         """Messages with missing role/content should use defaults."""
         db_init.init_database()
